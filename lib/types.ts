@@ -12,7 +12,6 @@ export interface RecordingMetadata {
   // Paths
   videoPath: string;
   transcriptPath?: string;
-  pdfPath?: string;
   mp4Path?: string;
   translationPath?: string;
   
@@ -50,7 +49,6 @@ export type ProcessingStatus =
   | 'uploaded'
   | 'transcribing'
   | 'transcribed'
-  | 'generating_pdf'
   | 'converting_mp4'
   | 'complete'
   | 'error';
@@ -84,7 +82,6 @@ export interface RecorderSyncRequest {
   video: string;
   transcript: string;
   translation?: string;
-  pdf: string;
   createdAt: string;
   duration?: number;
   fileSize?: number;

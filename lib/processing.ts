@@ -4,9 +4,8 @@
  * 
  * Handles async processing of recordings:
  * 1. Transcribe (Whisper)
- * 2. Generate PDF
- * 3. Convert to MP4
- * 4. Update metadata
+ * 2. Convert to MP4
+ * 3. Update metadata
  */
 
 import { RecordingMetadata } from './types';
@@ -18,7 +17,6 @@ import {
   getRecordingPaths,
 } from './storage';
 import { transcribe } from './transcribe';
-import { generatePdf } from './pdf';
 import { webmToMp4 } from './convert';
 
 /**
@@ -64,7 +62,7 @@ export async function processRecording(recordingId: string): Promise<void> {
         status: 'transcribed',
       });
 
-      console.log(`✅ Step 1/4 complete: Transcription (${language})`);
+      console.log(`✅ Step 1/3 complete: Transcription (${language})`);
     } catch (error) {
       await recordProcessingError(
         recordingId,
@@ -74,49 +72,12 @@ export async function processRecording(recordingId: string): Promise<void> {
       throw error;
     }
 
-    // STEP 2: Generate PDF
-    await updateProcessingStatus(
-      recordingId,
-      'generating_pdf',
-      'Generating PDF report',
-      2
-    );
-
-    let pdfPath: string;
-
-    try {
-      const updatedMetadata = await readMetadata(recordingId);
-      if (!updatedMetadata) {
-        throw new Error('Metadata lost during processing');
-      }
-
-      pdfPath = await generatePdf(
-        recordingId,
-        updatedMetadata,
-        transcriptPath
-      );
-
-      await updateMetadata(recordingId, {
-        pdfPath,
-      });
-
-      console.log(`✅ Step 2/4 complete: PDF generation`);
-    } catch (error) {
-      await recordProcessingError(
-        recordingId,
-        'pdf_generation',
-        (error as Error).message
-      );
-      // PDF is non-critical, continue
-      console.warn(`⚠️ PDF generation failed, continuing: ${(error as Error).message}`);
-    }
-
-    // STEP 3: Convert to MP4
+    // STEP 2: Convert to MP4
     await updateProcessingStatus(
       recordingId,
       'converting_mp4',
       'Converting to MP4 for compatibility',
-      3
+      2
     );
 
     let mp4Path: string | null = null;
@@ -128,7 +89,7 @@ export async function processRecording(recordingId: string): Promise<void> {
         await updateMetadata(recordingId, {
           mp4Path,
         });
-        console.log(`✅ Step 3/4 complete: MP4 conversion`);
+        console.log(`✅ Step 2/3 complete: MP4 conversion`);
       } else {
         console.warn(`⚠️ MP4 conversion returned null, continuing`);
       }
@@ -142,12 +103,12 @@ export async function processRecording(recordingId: string): Promise<void> {
       console.warn(`⚠️ MP4 conversion failed, continuing: ${(error as Error).message}`);
     }
 
-    // STEP 4: Mark as complete
+    // STEP 3: Mark as complete
     await updateProcessingStatus(
       recordingId,
       'complete',
       'Processing complete',
-      4,
+      3,
       'All steps completed successfully'
     );
 
@@ -213,7 +174,7 @@ export async function retryProcessing(recordingId: string): Promise<boolean> {
       progress: {
         step: 'uploaded',
         stepNumber: 1,
-        totalSteps: 4,
+        totalSteps: 3,
         message: 'Retrying processing',
       },
     });
@@ -228,3 +189,4 @@ export async function retryProcessing(recordingId: string): Promise<boolean> {
     return false;
   }
 }
+~
