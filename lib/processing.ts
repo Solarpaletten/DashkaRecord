@@ -8,16 +8,16 @@
  * 3. Update metadata
  */
 
-import { RecordingMetadata } from '../types/types';
+import { RecordingMetadata } from '@/types/api';
 import {
   readMetadata,
   updateMetadata,
   updateProcessingStatus,
   recordProcessingError,
   getRecordingPaths,
-} from './storage';
-import { transcribe } from './transcribe';
-import { webmToMp4 } from './convert';
+} from '@/lib/storage';
+import { transcribe } from '@/scripts/transcribe';
+import { webmToMp4 } from '@/lib/convert';
 
 /**
  * Process recording in background
@@ -189,4 +189,3 @@ export async function retryProcessing(recordingId: string): Promise<boolean> {
     return false;
   }
 }
-~

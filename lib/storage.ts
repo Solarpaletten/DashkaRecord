@@ -5,7 +5,7 @@
 
 import { promises as fs } from 'fs';
 import path from 'path';
-import { ProcessingStatus, RecordingMetadata, Screenshot } from '../types/types';
+import { ProcessingStatus, RecordingMetadata, Screenshot } from '@/types/api';
 
 // Directories
 const UPLOAD_BASE = path.join(process.cwd(), 'uploads');
@@ -202,7 +202,6 @@ export async function deleteRecording(id: string): Promise<boolean> {
     const filesToDelete = [
       metadata.videoPath,
       metadata.transcriptPath,
-      metadata.pdfPath,
       metadata.mp4Path,
       metadata.translationPath,
       path.join(METADATA_DIR, `${id}.json`),

@@ -4,8 +4,8 @@
  */
 
 import { promises as fs } from 'fs';
-import { TranslateRequest, TranslateResult } from '../types/types';
-import { getRecordingPaths, readMetadata, updateMetadata } from './storage';
+import { TranslateRequest, TranslateResult } from '@/types/api';
+import { getRecordingPaths, readMetadata, updateMetadata } from './lib/storage';
 
 const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY || '';
 const DEEPSEEK_API_URL = 'https://api.deepseek.com/v1/chat/completions';

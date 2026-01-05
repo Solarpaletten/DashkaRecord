@@ -1,1 +1,1 @@
-git add . && git commit -m "new structura task2"
+git add . && git commit -m "new structura task2" && git push origin main

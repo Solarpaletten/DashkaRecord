@@ -12,8 +12,7 @@ import { exec } from 'child_process';
 import { promises as fs } from 'fs';
 import path from 'path';
 import { promisify } from 'util';
-import { TranscribeResult, WhisperConfig, WhisperMode } from '../types/types';
-import { getRecordingPaths } from './storage';
+import { TranscribeResult, WhisperConfig, WhisperMode } from '@/types/api';
 
 const execPromise = promisify(exec);
 

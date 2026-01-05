@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import ShareButton from "../components/ShareButton";
+import ShareButton from '@/components/recorder/ShareButton';
 
 interface Recording {
   id: string;

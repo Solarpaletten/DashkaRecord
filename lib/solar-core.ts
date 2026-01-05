@@ -5,7 +5,7 @@
 
 import { promises as fs } from 'fs';
 import path from 'path';
-import { RecorderSyncRequest, RecorderSyncResponse } from '../types/types';
+import { RecorderSyncRequest, RecorderSyncResponse } from '@/types/api; 
 import { readMetadata, updateMetadata } from './storage';
 
 const SOLAR_CORE_URL = process.env.SOLAR_CORE_URL || 'http://localhost:8010';
@@ -33,7 +33,6 @@ export async function syncToSolarCore(
     video: metadata.videoPath,
     transcript: metadata.transcriptPath || '',
     translation: metadata.translationPath,
-    pdf: metadata.pdfPath || '',
     createdAt: metadata.createdAt,
     duration: metadata.durationSeconds,
     fileSize: metadata.fileSizeBytes,
