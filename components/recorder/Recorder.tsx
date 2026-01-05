@@ -126,7 +126,7 @@ export default function Recorder() {
       
       if (typeof ImageCapture !== 'undefined') {
         const imageCapture = new ImageCapture(videoTrack);
-        const bitmap = await imageCapture.grabFrame();
+        const bitmap = await (imageCapture as any).grabFrame();
         
         const canvas = document.createElement('canvas');
         canvas.width = bitmap.width;

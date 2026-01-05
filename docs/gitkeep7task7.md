@@ -1,4 +1,4 @@
-leanid@MacBook-Pro-LeanidHamburg DashkaRecord % pnpm build                                                        
+leanid@MacBook-Pro-LeanidHamburg DashkaRecord % pnpm build                                                      
 
 > dashka-record@2.0.0-alpha build /Users/leanid/Documents/ITproject/DashkaRecord
 > next build
@@ -30,17 +30,17 @@ Import trace for requested module:
  ✓ Compiled successfully
    Linting and checking validity of types  ..Failed to compile.
 
-./components/recorder/Recorder.tsx:129:43
-Type error: Property 'grabFrame' does not exist on type 'ImageCapture'.
+./lib/transcribe.ts:56:17
+Type error: Cannot find name 'getRecordingPaths'.
 
-  127 |       if (typeof ImageCapture !== 'undefined') {
-  128 |         const imageCapture = new ImageCapture(videoTrack);
-> 129 |         const bitmap = await imageCapture.grabFrame();
-      |                                           ^
-  130 |         
-  131 |         const canvas = document.createElement('canvas');
-  132 |         canvas.width = bitmap.width;
+  54 |
+  55 |   // Save results to files
+> 56 |   const paths = getRecordingPaths(recordingId);
+     |                 ^
+  57 |
+  58 |   // Save main transcript
+  59 |   await fs.writeFile(
  ELIFECYCLE  Command failed with exit code 1.
-leanid@MacBook-Pro-LeanidHamburg DashkaRecord % git add . && git commit -m "git6task6" && git push origin main 
+leanid@MacBook-Pro-LeanidHamburg DashkaRecord % 
 
-task6
+task7
