@@ -8,7 +8,7 @@
  * 3. Update metadata
  */
 
-import { RecordingMetadata } from './types';
+import { RecordingMetadata } from '../types/types';
 import {
   readMetadata,
   updateMetadata,
@@ -25,7 +25,7 @@ import { webmToMp4 } from './convert';
  */
 export async function processRecording(recordingId: string): Promise<void> {
   console.log(`\n🎬 Starting background processing: ${recordingId}`);
-  console.log('=' .repeat(60));
+  console.log('='.repeat(60));
 
   try {
     const metadata = await readMetadata(recordingId);
@@ -112,10 +112,10 @@ export async function processRecording(recordingId: string): Promise<void> {
       'All steps completed successfully'
     );
 
-    console.log('=' .repeat(60));
+    console.log('='.repeat(60));
     console.log(`🎉 Background processing complete: ${recordingId}\n`);
   } catch (error) {
-    console.error('=' .repeat(60));
+    console.error('='.repeat(60));
     console.error(`❌ Background processing failed: ${recordingId}`);
     console.error(`Error: ${(error as Error).message}\n`);
 
