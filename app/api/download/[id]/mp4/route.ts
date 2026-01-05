@@ -17,7 +17,7 @@ export async function GET(
       );
     }
 
-    let mp4Path = metadata.mp4Path;
+    let mp4Path: string | null = metadata.mp4Path ?? null;
 
     // If MP4 doesn't exist, convert on-demand
     if (!mp4Path) {
