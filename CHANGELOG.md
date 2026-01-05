@@ -1,1 +1,1 @@
-git add . && git commit -m "task2" && git push
+git add . && git commit -m "new structura task2"
