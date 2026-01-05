@@ -11,7 +11,6 @@ interface Recording {
   duration?: number;
   video_path: string;
   transcript_path?: string;
-  pdf_path?: string;
   translated: boolean;
   translation_path?: string;
   synced?: boolean;
@@ -122,7 +121,7 @@ export default function RecordsPage() {
   };
 
   const getStatusBadge = (recording: Recording) => {
-    if (recording.transcript_path && recording.pdf_path) {
+    if (recording.transcript_path) {
       return (
         <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
           ✓ Ready
@@ -314,25 +313,6 @@ export default function RecordsPage() {
                       >
                         <span>🌐</span>
                         <span>Translate</span>
-                      </button>
-                    )}
-
-                    {/* Download PDF */}
-                    {recording.pdf_path ? (
-                      <button
-                        onClick={() => downloadPDF(recording.id)}
-                        className="flex items-center justify-center space-x-2 px-4 py-2 rounded-lg bg-red-50 hover:bg-red-100 text-red-700 font-medium transition-all text-sm"
-                      >
-                        <span>📄</span>
-                        <span>PDF</span>
-                      </button>
-                    ) : (
-                      <button
-                        disabled
-                        className="flex items-center justify-center space-x-2 px-4 py-2 rounded-lg bg-gray-100 text-gray-400 font-medium text-sm cursor-not-allowed"
-                      >
-                        <span>📄</span>
-                        <span>PDF</span>
                       </button>
                     )}
                   </div>

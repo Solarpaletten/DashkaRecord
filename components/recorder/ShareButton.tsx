@@ -5,11 +5,10 @@ import { useState } from "react";
 interface ShareButtonProps {
   recording: {
     id: string;
-    language: string;
+    language?: string;
     video_path: string;
-    transcript_path: string;
+    transcript_path?: string;
     translation_path?: string;
-    pdf_path: string;
     created_at: string;
   };
 }
@@ -69,7 +68,6 @@ export default function ShareButton({ recording }: ShareButtonProps) {
         video: recording.video_path,
         transcript: recording.transcript_path,
         translation: recording.translation_path,
-        pdf: recording.pdf_path,
         created_at: recording.created_at
       };
 
