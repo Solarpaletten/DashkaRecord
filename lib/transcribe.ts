@@ -13,6 +13,7 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { promisify } from 'util';
 import { TranscribeResult, WhisperConfig, WhisperMode } from '@/types/recorder';
+import { getRecordingPaths } from '@/lib/storage';
 
 const execPromise = promisify(exec);
 
