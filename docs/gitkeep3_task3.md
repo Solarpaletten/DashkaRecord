@@ -1,3 +1,182 @@
+**D=>L | Dashka**
+Принято. Делаем **строго по протоколу** и **по согласованному TASK11**. Ниже — **чёткое ТЗ для Claude**, без воды.
+
+---
+
+# 🛰️ TASK11 — FILE SKELETON COMPLETION (Claude)
+
+**Контекст:**
+Архитектура и папки **уже созданы**.
+Задача Claude — **заполнить “кость” минимальными, корректными файлами**, чтобы:
+
+* проект **собирался**,
+* импорты **не падали**,
+* была готовность к дальнейшей логике (overlay / subtitles / player).
+
+❗ **Никакой бизнес-логики и real-time**.
+❗ **Только file completeness + stubs**.
+
+---
+
+## 🎯 ЦЕЛЬ TASK11
+
+> Проверить всю структуру папок,
+> **в каждой папке, где нет файлов — создать файл**
+> с минимальным валидным содержимым (stub).
+
+---
+
+## 📂 ЧЕК-ЛИСТ ПАПОК И ФАЙЛОВ (ОБЯЗАТЕЛЬНО)
+
+### 1️⃣ `components/subtitles/`
+
+Если нет файлов — создать:
+
+```
+components/subtitles/
+├── SubtitleOverlay.tsx
+├── SubtitleRenderer.tsx
+└── useSubtitles.ts
+```
+
+**Минимум:**
+
+* экспорт по умолчанию
+* `React.FC`
+* TODO-комментарии
+* без логики
+
+---
+
+### 2️⃣ `components/player/`
+
+```
+components/player/
+├── TranslatedMediaPlayer.tsx
+└── PlayerControls.tsx
+```
+
+**Минимум:**
+
+* `<video />` placeholder
+* props интерфейсы
+* пустые handlers
+
+---
+
+### 3️⃣ `components/translator/`
+
+Проверить наличие, если нет — создать:
+
+```
+components/translator/
+├── LanguageSwitcher.tsx
+├── TranslationPanel.tsx
+├── OutputModeSelector.tsx
+└── TranslationState.ts
+```
+
+---
+
+### 4️⃣ `lib/ai/`
+
+Проверить, что **ВСЕ** файлы существуют:
+
+```
+lib/ai/
+├── stt.ts
+├── translate.ts
+├── tts.ts
+├── subtitles.ts
+└── pipeline.ts
+```
+
+**Минимум в каждом:**
+
+```ts
+export function stub() {
+  // TODO: implement
+}
+```
+
+или named exports, если уже используются.
+
+---
+
+### 5️⃣ `app/api/ai/pipeline/`
+
+```
+app/api/ai/pipeline/
+└── route.ts
+```
+
+**Минимум:**
+
+* валидный Next.js route
+* `POST` handler
+* `return NextResponse.json({ ok: true })`
+
+---
+
+## 🧪 КРИТЕРИЙ ПРИЁМКИ
+
+Claude обязан проверить:
+
+```bash
+pnpm dev
+pnpm build
+```
+
+И подтвердить:
+
+* ✅ нет ошибок импорта
+* ✅ нет missing modules
+* ✅ проект стартует
+
+---
+
+## ❌ ЗАПРЕЩЕНО В TASK11
+
+* ❌ Реализация логики перевода
+* ❌ WebSocket
+* ❌ Whisper / GPT вызовы
+* ❌ UI-дизайн
+* ❌ рефакторинг существующего кода
+
+---
+
+## 📦 ФОРМАТ ОТЧЁТА ОТ CLAUDE
+
+**C=>D отчёт:**
+
+1. Список папок, где **добавлены файлы**
+2. Список **новых файлов**
+3. Commit hash
+4. Статус `dev` / `build`
+
+---
+
+## 📌 СМЫСЛ TASK11
+
+Это **структурный фундамент**:
+
+* чтобы дальше спокойно делать TASK12 (Live Subtitles),
+* без хаоса,
+* без “а где файл”.
+
+---
+
+**D=>C | Dashka**
+
+> Claude, выполни TASK11 строго по данному ТЗ.
+> Только file completeness.
+> Отчёт — по пунктам.
+
+Leanid, всё под контролем.
+Ждём ответ от Claude и проверяем.
+
+
+
 leanid@MacBook-Pro-LeanidHamburg DashkaRecord % tree
 .
 ├── CHANGELOG.md
