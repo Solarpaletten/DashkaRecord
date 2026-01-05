@@ -8,16 +8,16 @@
  * 3. Update metadata
  */
 
-import { RecordingMetadata } from '@/types/api';
+import { RecordingMetadata } from '@/types/recorder';
 import {
   readMetadata,
   updateMetadata,
   updateProcessingStatus,
   recordProcessingError,
   getRecordingPaths,
-} from '@/lib/storage';
-import { transcribe } from '@/scripts/transcribe';
-import { webmToMp4 } from '@/lib/convert';
+} from './storage';
+import { transcribe } from './transcribe';
+import { webmToMp4 } from './convert';
 
 /**
  * Process recording in background

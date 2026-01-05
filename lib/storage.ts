@@ -5,7 +5,7 @@
 
 import { promises as fs } from 'fs';
 import path from 'path';
-import { ProcessingStatus, RecordingMetadata, Screenshot } from '@/types/api';
+import { ProcessingStatus, RecordingMetadata, Screenshot } from '@/types/recorder';
 
 // Directories
 const UPLOAD_BASE = path.join(process.cwd(), 'uploads');
