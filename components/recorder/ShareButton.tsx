@@ -6,10 +6,10 @@ interface ShareButtonProps {
   recording: {
     id: string;
     language?: string;
-    video_path: string;
-    transcript_path?: string;
-    translation_path?: string;
-    created_at: string;
+    videoPath: string;
+    transcriptPath?: string;
+    translationPath?: string;
+    createdAt: string;
   };
 }
 
@@ -48,8 +48,8 @@ export default function ShareButton({ recording }: ShareButtonProps) {
       setIsSharing(true);
       setShareStatus("Preparing to share...");
 
-      const recipient = selectedRecipient === "custom" 
-        ? customEmail 
+      const recipient = selectedRecipient === "custom"
+        ? customEmail
         : recipients[selectedRecipient].email;
 
       if (!recipient) {
@@ -61,14 +61,14 @@ export default function ShareButton({ recording }: ShareButtonProps) {
       console.log(`📤 Sharing recording ${recording.id} to ${recipient}`);
 
       setShareStatus("🔗 Syncing to Solar Core...");
-      
+
       const syncPayload = {
         id: recording.id,
         language: recording.language,
-        video: recording.video_path,
-        transcript: recording.transcript_path,
-        translation: recording.translation_path,
-        created_at: recording.created_at
+        video: recording.videoPath,
+        transcript: recording.transcriptPath,
+        translation: recording.translationPath,
+        created_at: recording.createdAt
       };
 
       const syncResponse = await fetch("/api/sync", {
@@ -89,12 +89,12 @@ export default function ShareButton({ recording }: ShareButtonProps) {
       setShareStatus(`📧 Sending to ${recipients[selectedRecipient].name}...`);
       await new Promise(resolve => setTimeout(resolve, 1000));
 
-      const recipientName = selectedRecipient === "custom" 
-        ? customEmail 
+      const recipientName = selectedRecipient === "custom"
+        ? customEmail
         : recipients[selectedRecipient].name;
 
       setShareStatus(`✅ Successfully sent to ${recipientName}!`);
-      
+
       setTimeout(() => {
         setShareStatus("");
         setIsOpen(false);
@@ -103,7 +103,7 @@ export default function ShareButton({ recording }: ShareButtonProps) {
     } catch (error) {
       console.error("❌ Share error:", error);
       setShareStatus(`❌ Failed to share: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      
+
       setTimeout(() => {
         setShareStatus("");
       }, 5000);
@@ -127,11 +127,11 @@ export default function ShareButton({ recording }: ShareButtonProps) {
 
       {isOpen && (
         <>
-          <div 
-            className="fixed inset-0 z-10" 
+          <div
+            className="fixed inset-0 z-10"
             onClick={() => setIsOpen(false)}
           />
-          
+
           <div className="absolute right-0 bottom-full mb-2 w-80 bg-white rounded-lg shadow-xl border border-gray-200 p-4 z-20">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold text-gray-900">Share Recording</h3>
@@ -147,7 +147,7 @@ export default function ShareButton({ recording }: ShareButtonProps) {
 
             <div className="space-y-3 mb-4">
               <label className="text-sm font-medium text-gray-700">Send to:</label>
-              
+
               <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
                 <input
                   type="radio"
@@ -213,11 +213,10 @@ export default function ShareButton({ recording }: ShareButtonProps) {
             </div>
 
             {shareStatus && (
-              <div className={`mb-3 p-2 rounded text-sm text-center ${
-                shareStatus.includes("❌") ? "bg-red-50 text-red-700" :
-                shareStatus.includes("✅") ? "bg-green-50 text-green-700" :
-                "bg-blue-50 text-blue-700"
-              }`}>
+              <div className={`mb-3 p-2 rounded text-sm text-center ${shareStatus.includes("❌") ? "bg-red-50 text-red-700" :
+                  shareStatus.includes("✅") ? "bg-green-50 text-green-700" :
+                    "bg-blue-50 text-blue-700"
+                }`}>
                 {shareStatus}
               </div>
             )}
@@ -226,11 +225,10 @@ export default function ShareButton({ recording }: ShareButtonProps) {
               <button
                 onClick={handleShare}
                 disabled={isSharing || (selectedRecipient === "custom" && !customEmail)}
-                className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${
-                  isSharing || (selectedRecipient === "custom" && !customEmail)
+                className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${isSharing || (selectedRecipient === "custom" && !customEmail)
                     ? "bg-gray-300 text-gray-500 cursor-not-allowed"
                     : "bg-green-500 hover:bg-green-600 text-white"
-                }`}
+                  }`}
               >
                 {isSharing ? "Sharing..." : "Send"}
               </button>

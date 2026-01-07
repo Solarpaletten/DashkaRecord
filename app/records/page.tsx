@@ -6,16 +6,27 @@ import ShareButton from '@/components/recorder/ShareButton';
 interface Recording {
   id: string;
   filename: string;
-  created_at: string;
+  createdAt: string;
+  updatedAt: string;
+  videoPath: string;
+  fileSizeBytes: number;
+  status: string;
+  progress: {
+    step: string;
+    stepNumber: number;
+    totalSteps: number;
+    message: string;
+  };
+  translated: boolean;
+  synced: boolean;
+  mp4Path?: string;
+  transcriptPath?: string;
+  translationPath?: string;
+  syncStatus?: string;
+  solarCoreId?: string;
+  screenshots: any[];
   language?: string;
   duration?: number;
-  video_path: string;
-  transcript_path?: string;
-  translated: boolean;
-  translation_path?: string;
-  synced?: boolean;
-  sync_status?: string;
-  solar_core_id?: string;
 }
 
 export default function RecordsPage() {
@@ -33,16 +44,16 @@ export default function RecordsPage() {
     try {
       setLoading(true);
       setError(null);
-      
+
       const response = await fetch('/api/files');
-      
+
       if (!response.ok) {
         throw new Error(`Failed to fetch recordings: ${response.status}`);
       }
-      
+
       const data = await response.json();
       setRecordings(data);
-      
+
     } catch (err) {
       console.error("Fetch error:", err);
       setError(err instanceof Error ? err.message : "Failed to load recordings");
@@ -54,19 +65,19 @@ export default function RecordsPage() {
   const translateRecording = async (recordingId: string, targetLang: string = "ru") => {
     try {
       setTranslating(recordingId);
-      
+
       const response = await fetch('/api/translate', {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ recording_id: recordingId, target_language: targetLang })
       });
-      
+
       if (!response.ok) {
         throw new Error("Translation failed");
       }
-      
+
       await fetchRecordings();
-      
+
     } catch (err) {
       console.error("Translation error:", err);
       alert("Translation failed. Please try again.");
@@ -79,18 +90,18 @@ export default function RecordsPage() {
     if (!confirm("Are you sure you want to delete this recording?")) {
       return;
     }
-    
+
     try {
       const response = await fetch(`/api/files/${recordingId}`, {
         method: "DELETE"
       });
-      
+
       if (!response.ok) {
         throw new Error("Deletion failed");
       }
-      
+
       await fetchRecordings();
-      
+
     } catch (err) {
       console.error("Delete error:", err);
       alert("Failed to delete recording. Please try again.");
@@ -121,13 +132,13 @@ export default function RecordsPage() {
   };
 
   const getStatusBadge = (recording: Recording) => {
-    if (recording.transcript_path) {
+    if (recording.transcriptPath) {
       return (
         <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
           ✓ Ready
         </span>
       );
-    } else if (recording.transcript_path) {
+    } else if (recording.transcriptPath) {
       return (
         <span className="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
           ⏳ Processing PDF
@@ -229,7 +240,7 @@ export default function RecordsPage() {
                     </div>
                   </div>
                   <p className="text-blue-100 text-sm">
-                    {formatDate(recording.created_at)}
+                    {formatDate(recording.createdAt)}
                   </p>
                 </div>
 
@@ -265,7 +276,7 @@ export default function RecordsPage() {
                     </a>
 
                     {/* View Transcript */}
-                    {recording.transcript_path ? (
+                    {recording.transcriptPath ? (
                       <button
                         onClick={() => {
                           window.open(`/api/static/transcripts/${recording.id}.txt`, "_blank");
@@ -286,7 +297,7 @@ export default function RecordsPage() {
                     )}
 
                     {/* Translate */}
-                    {recording.transcript_path && !recording.translated ? (
+                    {recording.transcriptPath && !recording.translated ? (
                       <button
                         onClick={() => translateRecording(recording.id)}
                         disabled={translating === recording.id}
@@ -298,7 +309,7 @@ export default function RecordsPage() {
                     ) : recording.translated ? (
                       <button
                         onClick={() => {
-                          const langCode = recording.translation_path?.match(/_([a-z]{2})\.txt$/)?.[1] || "ru";
+                          const langCode = recording.translationPath?.match(/_([a-z]{2})\.txt$/)?.[1] || "ru";
                           window.open(`/api/static/transcripts/${recording.id}_${langCode}.txt`, "_blank");
                         }}
                         className="flex items-center justify-center space-x-2 px-4 py-2 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-700 font-medium transition-all text-sm"
@@ -327,7 +338,7 @@ export default function RecordsPage() {
                       <span>📱</span>
                       <span>MP4</span>
                     </button>
-                    
+
                     <button
                       onClick={() => downloadWebM(recording.id)}
                       className="flex items-center justify-center space-x-2 px-4 py-2 rounded-lg bg-gray-50 hover:bg-gray-100 text-gray-700 font-medium transition-all text-sm"
@@ -341,7 +352,7 @@ export default function RecordsPage() {
                   {/* Share & Delete Row */}
                   <div className="flex gap-2 pt-2">
                     <ShareButton recording={recording} />
-                    
+
                     <button
                       onClick={() => deleteRecording(recording.id)}
                       className="flex-1 px-4 py-2 rounded-lg bg-gray-100 hover:bg-red-50 text-gray-600 hover:text-red-600 font-medium transition-all text-sm"
@@ -351,11 +362,11 @@ export default function RecordsPage() {
                   </div>
 
                   {/* Solar Core Sync Info */}
-                  {recording.solar_core_id && (
+                  {recording.solarCoreId && (
                     <div className="pt-3 border-t border-gray-200">
                       <div className="flex items-center justify-between text-xs">
                         <span className="text-gray-500">Solar Core ID:</span>
-                        <span className="font-mono text-blue-600">{recording.solar_core_id}</span>
+                        <span className="font-mono text-blue-600">{recording.solarCoreId}</span>
                       </div>
                     </div>
                   )}
@@ -383,7 +394,7 @@ export default function RecordsPage() {
         <div className="mt-6 bg-gradient-to-r from-orange-500 to-red-500 rounded-lg shadow-lg p-6 text-white">
           <h3 className="text-lg font-semibold mb-2">💡 Tip for Telegram</h3>
           <p className="text-sm text-orange-50">
-            Use the <strong>"MP4"</strong> button to download videos that work in Telegram, WhatsApp, and on iPhone. 
+            Use the <strong>"MP4"</strong> button to download videos that work in Telegram, WhatsApp, and on iPhone.
             WebM files are original quality but may not work in some apps.
           </p>
         </div>
