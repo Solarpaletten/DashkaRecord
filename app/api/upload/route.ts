@@ -2,11 +2,24 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createRecordingId, saveWebm, createMetadata } from '@/lib/storage';
 import { processRecording } from '@/lib/processing';
 
+// Handle CORS preflight
+export async function OPTIONS(req: NextRequest) {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+      'Access-Control-Max-Age': '86400',
+    },
+  });
+}
+
 export async function POST(req: NextRequest) {
   try {
     console.log('📤 Upload request received');
 
-    // Parse multipart form data (App Router style)
+    // Parse multipart form data
     const formData = await req.formData();
     const file = formData.get('file') as File | null;
 
@@ -23,12 +36,19 @@ export async function POST(req: NextRequest) {
     const recordingId = createRecordingId();
     const filename = `${recordingId}.webm`;
 
-    // Validate file size (example limit: 500MB)
+    // Validate file size (max 500MB)
     const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500MB
     if (file.size > MAX_FILE_SIZE) {
       return NextResponse.json(
         { error: 'File too large. Max 500MB' },
-        { status: 413 }
+        {
+          status: 413,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'POST, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type',
+          },
+        }
       );
     }
 
@@ -55,13 +75,22 @@ export async function POST(req: NextRequest) {
       console.error(`Background processing error for ${recordingId}:`, error);
     });
 
-    // Return immediately
-    return NextResponse.json({
-      status: 'success',
-      message: 'Video uploaded. Processing in background.',
-      recording_id: recordingId,
-      video_url: `/api/static/video/${filename}`,
-    });
+    // Return immediately with CORS headers
+    return NextResponse.json(
+      {
+        status: 'success',
+        message: 'Video uploaded. Processing in background.',
+        recording_id: recordingId,
+        video_url: `/api/static/video/${filename}`,
+      },
+      {
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type',
+        },
+      }
+    );
   } catch (error) {
     console.error('❌ Upload error:', error);
     return NextResponse.json(
@@ -69,7 +98,14 @@ export async function POST(req: NextRequest) {
         error: 'Upload failed',
         details: (error as Error).message,
       },
-      { status: 500 }
+      {
+        status: 500,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type',
+        },
+      }
     );
   }
 }
