@@ -3,11 +3,13 @@ import { readMetadata, deleteRecording } from '@/lib/storage';
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
+
   try {
-    const metadata = await readMetadata(params.id);
-    
+    const metadata = await readMetadata(id);
+
     if (!metadata) {
       return NextResponse.json(
         { error: 'Recording not found' },
@@ -17,7 +19,7 @@ export async function GET(
 
     return NextResponse.json(metadata);
   } catch (error) {
-    console.error(`❌ Error getting file ${params.id}:`, error);
+    console.error(`❌ Error getting file ${id}:`, error);
     return NextResponse.json(
       { error: 'Failed to get recording' },
       { status: 500 }
@@ -25,15 +27,18 @@ export async function GET(
   }
 }
 
+// ✅ ДОБАВЬ ЭТО:
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
+
   try {
-    console.log(`🗑️ Deleting recording: ${params.id}`);
-    
-    const success = await deleteRecording(params.id);
-    
+    console.log(`🗑️ Deleting recording: ${id}`);
+
+    const success = await deleteRecording(id);
+
     if (!success) {
       return NextResponse.json(
         { error: 'Recording not found' },
@@ -43,10 +48,10 @@ export async function DELETE(
 
     return NextResponse.json({
       status: 'success',
-      message: `Recording ${params.id} deleted successfully`,
+      message: `Recording ${id} deleted successfully`,
     });
   } catch (error) {
-    console.error(`❌ Error deleting ${params.id}:`, error);
+    console.error(`❌ Error deleting ${id}:`, error);
     return NextResponse.json(
       { error: 'Failed to delete recording' },
       { status: 500 }

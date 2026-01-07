@@ -5,10 +5,13 @@ import { webmToMp4 } from '@/lib/convert';
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
+
+
   try {
-    const metadata = await readMetadata(params.id);
+    const metadata = await readMetadata(id);
     
     if (!metadata) {
       return NextResponse.json(
@@ -21,8 +24,8 @@ export async function GET(
 
     // If MP4 doesn't exist, convert on-demand
     if (!mp4Path) {
-      console.log(`🔄 On-demand MP4 conversion for: ${params.id}`);
-      mp4Path = await webmToMp4(params.id);
+      console.log(`🔄 On-demand MP4 conversion for: ${id}`);
+      mp4Path = await webmToMp4(id);
       
       if (!mp4Path) {
         return NextResponse.json(
@@ -36,8 +39,8 @@ export async function GET(
         await access(mp4Path);
       } catch {
         // File missing, try conversion
-        console.log(`⚠️ MP4 file missing, reconverting: ${params.id}`);
-        mp4Path = await webmToMp4(params.id);
+        console.log(`⚠️ MP4 file missing, reconverting: ${id}`);
+        mp4Path = await webmToMp4(id);
         
         if (!mp4Path) {
           return NextResponse.json(
@@ -51,18 +54,18 @@ export async function GET(
     // Read MP4 file
     const fileBuffer = await readFile(mp4Path);
 
-    console.log(`📥 Downloading MP4: ${params.id} (${fileBuffer.length} bytes)`);
+    console.log(`📥 Downloading MP4: ${id} (${fileBuffer.length} bytes)`);
 
     // Return file with proper headers
     return new NextResponse(fileBuffer, {
       headers: {
         'Content-Type': 'video/mp4',
-        'Content-Disposition': `attachment; filename="recording_${params.id}.mp4"`,
+        'Content-Disposition': `attachment; filename="recording_${id}.mp4"`,
         'Content-Length': fileBuffer.length.toString(),
       },
     });
   } catch (error) {
-    console.error(`❌ MP4 download error for ${params.id}:`, error);
+    console.error(`❌ MP4 download error for ${id}:`, error);
     return NextResponse.json(
       {
         error: 'Failed to download MP4 file',
