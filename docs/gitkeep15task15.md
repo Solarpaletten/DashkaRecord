@@ -1,286 +1,155 @@
-Принято. Ниже — **чёткая, финальная команда D=>C (Dashka → Claude)** на **реализацию**, без обсуждений и развилок. Это уже **исполнение архитектурного решения**, которое ты утвердил.
-
----
-
-## **D=>C TASK — IMPLEMENTATION**
-
-### **TASK 15 — Prisma Migration & DB Persistence (Dashka Record)**
-
-**Роль:** Claude (AI Engineer)
-**Проект:** Dashka Record
-**База:** PostgreSQL + Prisma
-**Эталон:** `solar-nextjs-template` (Prisma стиль и подход)
-**Деплой:** self-host / Render / VPS (НЕ Vercel)
-
----
-
-### 🎯 **ЦЕЛЬ**
-
-Перевести Dashka Record с file-based metadata (`uploads/metadata/*.json`) на **PostgreSQL + Prisma**, сохранив:
-
-* файловое хранилище для видео (disk),
-* стабильный список записей в `/records`,
-* единый стандарт Solar (Prisma, lib/db.ts, API через App Router).
-
----
-
-### 🧱 **ОБЯЗАТЕЛЬНАЯ PRISMA-МОДЕЛЬ**
-
-Использовать **ТОЛЬКО** эту модель (утверждена архитектором):
-
-```prisma
-model Recording {
-  id                String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  filename          String   @db.VarChar(255)
-
-  webmPath          String   @map("webm_path") @db.Text
-  mp4Path           String?  @map("mp4_path") @db.Text
-  transcriptPath    String?  @map("transcript_path") @db.Text
-  subtitlesPath     String?  @map("subtitles_path") @db.Text
-
-  fileSizeBytes     BigInt?  @map("file_size_bytes")
-  durationSeconds   Int?     @map("duration_seconds")
-  language          String?  @db.VarChar(10)
-  languageConfidence Float?  @map("language_confidence")
-
-  status            String   @default("uploaded") @db.VarChar(50)
-  processingStep    String?  @map("processing_step") @db.VarChar(100)
-  processingMessage String?  @map("processing_message")
-
-  translated        Boolean  @default(false)
-  synced            Boolean  @default(false)
-
-  errorStep         String?  @map("error_step")
-  errorMessage      String?  @map("error_message")
-  errorAt           DateTime? @map("error_at") @db.Timestamptz
-
-  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt         DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
-
-  @@index([createdAt])
-  @@index([status])
-  @@map("recordings")
-}
-```
-
----
-
-### 🛠️ **ШАГИ РЕАЛИЗАЦИИ (ОБЯЗАТЕЛЬНО В ЭТОМ ПОРЯДКЕ)**
-
-#### 1️⃣ Prisma setup
-
-* Добавить `prisma/` в Dashka Record
-* `schema.prisma` с моделью выше
-* `pnpm prisma generate`
-* `pnpm prisma migrate dev --name init_recordings`
-
-#### 2️⃣ DB слой
-
-Создать:
-
-* `lib/db.ts` — PrismaClient singleton
-* `lib/recordings.ts`:
-
-  * `createRecording`
-  * `listRecordings`
-  * `getRecording(id)`
-  * `updateRecording(id, data)`
-
-❌ **НЕ использовать fs для metadata**
-
-#### 3️⃣ API обновления
-
-Переписать:
-
-* `/api/upload`
-
-  * файл → сохраняется на диск
-  * metadata → `createRecording(...)`
-* `/api/files`
-
-  * `GET` → `listRecordings()` из Prisma
-* `/api/files/[id]`
-
-  * `GET` → `getRecording(id)`
-  * `DELETE` → удалить запись из Prisma + удалить файлы с диска
-
-#### 4️⃣ Frontend
-
-* `/records` должен читать **ТОЛЬКО API**
-* После refresh список **НЕ должен пропадать**
-
-#### 5️⃣ Удалить legacy
-
-* Убрать:
-
-  * `uploads/metadata/*.json`
-  * `fs.readdir` для листинга
-* `lib/storage.ts` оставить **только** для работы с файлами (disk I/O)
-
----
-
-### 🚀 **ACCEPTANCE CRITERIA (ПРОВЕРКА)**
-
-* [ ] Записал экран
-* [ ] Видео сохранилось на диск
-* [ ] Запись появилась в PostgreSQL
-* [ ] `/records` показывает запись
-* [ ] Обновил страницу → запись осталась
-* [ ] Поведение одинаково локально и на сервере
-
----
-
-### 📦 **DELIVERABLES**
-
-Claude обязан выдать:
-
-1. `prisma/schema.prisma`
-2. Миграции
-3. `lib/db.ts`, `lib/recordings.ts`
-4. Обновлённые API routes
-5. Краткий отчёт: что заменено, что удалено
-
----
-
-### 🚫 **ОГРАНИЧЕНИЯ**
-
-* ❌ Не использовать Vercel
-* ❌ Не хранить видео в БД
-* ❌ Не смешивать file-based metadata с Prisma
-
----
-
-### 🧭 **КОНТЕКСТ**
-
-Это прямое продолжение Solar архитектуры.
-Цель — **production-grade persistence**, без костылей.
-
----
-
-**D=>C:** Приступай к реализации **TASK 15**.
-Отчёт + файлы — по готовности.
-
-
-leanid@MacBook-Pro-LeanidHamburg DashkaRecord % cd prisma 
-leanid@MacBook-Pro-LeanidHamburg prisma % ls -la 
-total 32
-drwxr-xr-x@  5 leanid  staff   160 Jan  7 13:29 .
-drwxr-xr-x@ 32 leanid  staff  1024 Jan  7 13:29 ..
--rw-r--r--@  1 leanid  staff  8196 Jan  7 13:29 .DS_Store
-drwxr-xr-x@  2 leanid  staff    64 Jan  7 13:29 migrations
--rw-r--r--@  1 leanid  staff  1483 Jan  7 13:32 schema.prisma
-leanid@MacBook-Pro-LeanidHamburg prisma % cat schema.prisma 
-generator client {
-  provider = "prisma-client-js"
-}
-
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
-
-model Recording {
-  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-
-  filename        String   @db.VarChar(255)
-
-  // File paths (local disk or mounted volume)
-  webmPath        String   @map("webm_path") @db.Text
-  mp4Path         String?  @map("mp4_path") @db.Text
-  transcriptPath  String?  @map("transcript_path") @db.Text
-  subtitlesPath   String?  @map("subtitles_path") @db.Text
-
-  // Metadata
-  fileSizeBytes   BigInt?  @map("file_size_bytes")
-  durationSeconds Int?     @map("duration_seconds")
-  language        String?  @db.VarChar(10)
-  languageConfidence Float? @map("language_confidence")
-
-  // Processing state
-  status          String   @default("uploaded") @db.VarChar(50)
-  processingStep  String?  @map("processing_step") @db.VarChar(100)
-  processingMessage String? @map("processing_message")
-
-  // Flags
-  translated      Boolean  @default(false)
-  synced          Boolean  @default(false)
-
-  // Errors
-  errorStep       String?  @map("error_step")
-  errorMessage    String?  @map("error_message")
-  errorAt         DateTime? @map("error_at") @db.Timestamptz
-
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
-
-  @@index([createdAt])
-  @@index([status])
-  @@map("recordings")
-}
-leanid@MacBook-Pro-LeanidHamburg prisma % pnpm add prisma @prisma/client
- WARN  deprecated fluent-ffmpeg@2.1.3: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
- WARN  deprecated eslint@8.57.1: This version is no longer supported. Please see https://eslint.org/version-support for other options.
- WARN  deprecated next@14.1.0: This version has a security vulnerability. Please upgrade to a patched version. See https://nextjs.org/blog/security-update-2025-12-11 for more details.
-Downloading prisma@7.2.0: 6.96 MB/6.96 MB, done
- WARN  Tarball download average speed 43 KiB/s (size 44 KiB) is below 50 KiB/s: https://registry.npmjs.org/@prisma/client-runtime-utils/-/client-runtime-utils-7.2.0.tgz (GET)
- WARN  Tarball download average speed 36 KiB/s (size 41 KiB) is below 50 KiB/s: https://registry.npmjs.org/@prisma/dev/-/dev-0.17.0.tgz (GET): 7.15 MB/10.62 MB
-Downloading @prisma/client@7.2.0: 10.62 MB/10.62 MB, done
-Downloading @electric-sql/pglite@0.3.2: 7.68 MB/7.68 MB, done
- WARN  5 deprecated subdependencies found: @humanwhocodes/config-array@0.13.0, @humanwhocodes/object-schema@2.0.3, glob@7.2.3, inflight@1.0.6, rimraf@3.0.2
-Packages: +79 -1
-+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
-Progress: resolved 519, reused 407, downloaded 54, added 79, done
-
-dependencies:
-+ @prisma/client 7.2.0
-+ prisma 7.2.0
-
-╭ Warning ───────────────────────────────────────────────────────────────────────────────────╮
-│                                                                                            │
-│   Ignored build scripts: @ffmpeg-installer/darwin-arm64@4.1.5.                             │
-│   Run "pnpm approve-builds" to pick which dependencies should be allowed to run scripts.   │
-│                                                                                            │
-╰────────────────────────────────────────────────────────────────────────────────────────────╯
-Done in 9s using pnpm v10.27.0
-leanid@MacBook-Pro-LeanidHamburg prisma % pnpm prisma init
- ERROR  A folder called prisma already exists in your project.
-        Please try again in a project that is not yet using Prisma.
-      
-leanid@MacBook-Pro-LeanidHamburg prisma % pnpm prisma generate
-
-Prisma schema loaded from prisma/schema.prisma.
-Error: Prisma schema validation - (get-config wasm)
-Error code: P1012
-error: The datasource property `url` is no longer supported in schema files. Move connection URLs for Migrate to `prisma.config.ts` and pass either `adapter` for a direct database connection or `accelerateUrl` for Accelerate to the `PrismaClient` constructor. See https://pris.ly/d/config-datasource and https://pris.ly/d/prisma7-client-config
-  -->  prisma/schema.prisma:7
-   | 
- 6 |   provider = "postgresql"
- 7 |   url      = env("DATABASE_URL")
-   | 
-
-Validation Error Count: 1
-[Context: getConfig]
-
-Prisma CLI Version : 7.2.0
-leanid@MacBook-Pro-LeanidHamburg prisma % 
-leanid@MacBook-Pro-LeanidHamburg prisma %
-zsh: command not found: leanid@MacBook-Pro-LeanidHamburg
-leanid@MacBook-Pro-LeanidHamburg prisma % pnpm prisma migrate dev --name init_recordings
-
-Prisma schema loaded from prisma/schema.prisma.
-Error: Prisma schema validation - (get-config wasm)
-Error code: P1012
-error: The datasource property `url` is no longer supported in schema files. Move connection URLs for Migrate to `prisma.config.ts` and pass either `adapter` for a direct database connection or `accelerateUrl` for Accelerate to the `PrismaClient` constructor. See https://pris.ly/d/config-datasource and https://pris.ly/d/prisma7-client-config
-  -->  prisma/schema.prisma:7
-   | 
- 6 |   provider = "postgresql"
- 7 |   url      = env("DATABASE_URL")
-   | 
-
-Validation Error Count: 1
-[Context: getConfig]
-
-Prisma CLI Version : 7.2.0
-leanid@MacBook-Pro-LeanidHamburg prisma % pnpm prisma generate                          
-
-task 15 
+leanid@MacBook-Pro-LeanidHamburg DashkaRecord % >....                                                        
+# Создай .env
+cat > .env << 'EOF'
+# DashkaRecord Database (на Solar сервере)
+DATABASE_URL="postgresql://solar_user:Pass123@207.154.220.86:5433/dashkarecord"
+
+# Optional AI features
+OPENAI_API_KEY=""
+DEEPSEEK_API_KEY=""
+
+# Solar Core integration
+SOLAR_CORE_API_URL=""
+SOLAR_CORE_API_KEY=""
+
+# Feature flags
+ENABLE_AI_TRANSCRIPTION="false"
+ENABLE_AI_TRANSLATION="false"
+ENABLE_SOLAR_SYNC="false"
+ENABLE_MP4_CONVERSION="true"
+
+# Node environment
+NODE_ENV="development"
+EOF
+
+# Проверь что создался
+cat .env
+cd: no such file or directory: /Users/leanid/DashkaRecord
+zsh: command not found: #
+zsh: command not found: #
+# DashkaRecord Database (на Solar сервере)
+DATABASE_URL="postgresql://solar_user:Pass123@207.154.220.86:5433/dashkarecord"
+
+# Optional AI features
+OPENAI_API_KEY=""
+DEEPSEEK_API_KEY=""
+
+# Solar Core integration  
+SOLAR_CORE_API_URL=""
+SOLAR_CORE_API_KEY=""
+
+# Feature flags
+ENABLE_AI_TRANSCRIPTION="false"
+ENABLE_AI_TRANSLATION="false"
+ENABLE_SOLAR_SYNC="false"
+ENABLE_MP4_CONVERSION="true"
+
+# Node environment
+NODE_ENV="development"
+leanid@MacBook-Pro-LeanidHamburg DashkaRecord % pnpm prisma generate
+Environment variables loaded from .env
+Prisma schema loaded from prisma/schema.prisma
+┌─────────────────────────────────────────────────────────┐
+│  Update available 6.19.1 -> 7.2.0                       │
+│                                                         │
+│  This is a major update - please follow the guide at    │
+│  https://pris.ly/d/major-version-upgrade                │
+│                                                         │
+│  Run the following to update                            │
+│    npm i --save-dev prisma@latest                       │
+│    npm i @prisma/client@latest                          │
+└─────────────────────────────────────────────────────────┘
+
+✔ Generated Prisma Client (v6.19.1) to ./node_modules/.pnpm/@prisma+client@6.19.1_prisma@6.19.1_typescript@5.9.3__typescript@5.9.3/node_modules/@prisma/client in 39ms
+
+Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)
+
+Tip: Interested in query caching in just a few lines of code? Try Accelerate today! https://pris.ly/tip-3-accelerate
+
+leanid@MacBook-Pro-LeanidHamburg DashkaRecord % pnpm prisma db pull
+Environment variables loaded from .env
+Prisma schema loaded from prisma/schema.prisma
+Datasource "db": PostgreSQL database "dashkarecord", schema "public" at "207.154.220.86:5433"
+
+✖ Introspecting based on datasource defined in prisma/schema.prisma
+Error: 
+P4001 The introspected database was empty:
+
+prisma db pull could not create any models in your schema.prisma file and you will not be able to generate Prisma Client with the prisma generate command.
+
+To fix this, you have two options:
+
+- manually create a table in your database.
+- make sure the database connection URL inside the datasource block in schema.prisma points to a database that is not empty (it must contain at least one table).
+
+Then you can run prisma db pull again. 
+
+leanid@MacBook-Pro-LeanidHamburg DashkaRecord % pnpm prisma migrate dev --name init_recordings
+Environment variables loaded from .env
+Prisma schema loaded from prisma/schema.prisma
+Datasource "db": PostgreSQL database "dashkarecord", schema "public" at "207.154.220.86:5433"
+
+Applying migration `20260107134319_init_recordings`
+
+The following migration(s) have been created and applied from new schema changes:
+
+prisma/migrations/
+  └─ 20260107134319_init_recordings/
+    └─ migration.sql
+
+Your database is now in sync with your schema.
+
+✔ Generated Prisma Client (v6.19.1) to ./node_modules/.pnpm/@prisma+client@6.19.1_prisma@6.19.1_typescript@5
+.9.3__typescript@5.9.3/node_modules/@prisma/client in 41ms
+
+
+leanid@MacBook-Pro-LeanidHamburg DashkaRecord % pnpm prisma studio
+Environment variables loaded from .env
+Prisma schema loaded from prisma/schema.prisma
+Prisma Studio is up on http://localhost:5555
+Prisma schema loaded from prisma/schema.prisma
+^C
+leanid@MacBook-Pro-LeanidHamburg DashkaRecord % psql "postgresql://solar_user:Pass123@207.154.220.86:5433/dashkarecord" -c "\dt"
+                List of relations
+ Schema |        Name        | Type  |   Owner    
+--------+--------------------+-------+------------
+ public | _prisma_migrations | table | solar_user
+ public | recordings         | table | solar_user
+(2 rows)
+
+leanid@MacBook-Pro-LeanidHamburg DashkaRecord % pnpm dev
+
+> dashka-record@2.0.0-alpha dev /Users/leanid/Documents/ITproject/DashkaRecord
+> next dev
+
+ ⚠ Port 3000 is in use, trying 3001 instead.
+ ⚠ Port 3001 is in use, trying 3002 instead.
+ ⚠ Port 3002 is in use, trying 3003 instead.
+ ⚠ Port 3003 is in use, trying 3004 instead.
+ ⚠ Port 3004 is in use, trying 3005 instead.
+   ▲ Next.js 14.1.0
+   - Local:        http://localhost:3005
+   - Environments: .env.local, .env
+
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm.
+ ✓ Ready in 2.6s
+^C
+leanid@MacBook-Pro-LeanidHamburg DashkaRecord % pnpm dev
+
+> dashka-record@2.0.0-alpha dev /Users/leanid/Documents/ITproject/DashkaRecord
+> next dev
+
+ ⚠ Port 3000 is in use, trying 3001 instead.
+   ▲ Next.js 14.1.0
+   - Local:        http://localhost:3001
+   - Environments: .env.local, .env
+
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm.
+ ✓ Ready in 1454ms
+ ○ Compiling / ...
+ ✓ Compiled / in 991ms (435 modules)
+task15

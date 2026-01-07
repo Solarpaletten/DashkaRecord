@@ -10,10 +10,10 @@
   },
   "dependencies": {
     "@ffmpeg-installer/ffmpeg": "^1.1.0",
-    "@prisma/client": "^7.2.0",
+    "@prisma/client": "^6.19.0",
     "fluent-ffmpeg": "^2.1.2",
     "next": "14.1.0",
-    "prisma": "^7.2.0",
+    "prisma": "^6.19.0",
     "react": "^18",
     "react-dom": "^18"
   },
