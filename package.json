@@ -9,18 +9,19 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "next": "14.1.0",
-    "react": "^18",
-    "react-dom": "^18",
+    "@ffmpeg-installer/ffmpeg": "^1.1.0",
+    "@prisma/client": "^7.2.0",
     "fluent-ffmpeg": "^2.1.2",
-    "@ffmpeg-installer/ffmpeg": "^1.1.0"
+    "next": "14.1.0",
+    "prisma": "^7.2.0",
+    "react": "^18",
+    "react-dom": "^18"
   },
   "devDependencies": {
-    
+    "@types/fluent-ffmpeg": "^2.1.24",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
-    "@types/fluent-ffmpeg": "^2.1.24",
     "autoprefixer": "^10.0.1",
     "eslint": "^8",
     "eslint-config-next": "14.1.0",
