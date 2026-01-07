@@ -19,7 +19,7 @@ export async function GET(
 
     return NextResponse.json(metadata);
   } catch (error) {
-    console.error(`❌ Error getting file ${id}:`, error);
+    console.error (`❌ Error getting file ${id}:`, error);
     return NextResponse.json(
       { error: 'Failed to get recording' },
       { status: 500 }
@@ -34,7 +34,7 @@ export async function DELETE(
   const { id } = await params;
 
   try {
-    console.log(`🗑️ Deleting recording: ${id}`);
+    console.log (`🗑️ Deleting recording: ${id}`);
     
     const success = await deleteRecording(id);
     
@@ -50,7 +50,7 @@ export async function DELETE(
       message: `Recording ${id} deleted successfully`,
     });
   } catch (error) {
-    console.error(`❌ Error deleting ${id}:`, error);
+    console.error (`❌ Error deleting ${id}:`, error);
     return NextResponse.json(
       { error: 'Failed to delete recording' },
       { status: 500 }
