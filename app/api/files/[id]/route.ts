@@ -9,7 +9,7 @@ export async function GET(
 
   try {
     const metadata = await readMetadata(id);
-
+    
     if (!metadata) {
       return NextResponse.json(
         { error: 'Recording not found' },
@@ -27,7 +27,6 @@ export async function GET(
   }
 }
 
-// ✅ ДОБАВЬ ЭТО:
 export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -36,9 +35,9 @@ export async function DELETE(
 
   try {
     console.log(`🗑️ Deleting recording: ${id}`);
-
+    
     const success = await deleteRecording(id);
-
+    
     if (!success) {
       return NextResponse.json(
         { error: 'Recording not found' },
