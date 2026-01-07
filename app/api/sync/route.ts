@@ -4,7 +4,7 @@ import { syncToSolarCore } from '@/lib/solar-core';
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { id, recipient } = body;
+    const { id } = body;
 
     if (!id) {
       return NextResponse.json(
@@ -13,9 +13,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    console.log(`🔗 Sync request: ${id} → ${recipient || 'default'}`);
+    console.log(`🔗 Sync request: ${id}`);
 
-    const result = await syncToSolarCore(id, recipient);
+    const result = await syncToSolarCore(id);
 
     return NextResponse.json(result);
   } catch (error) {

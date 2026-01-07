@@ -1,21 +1,22 @@
 /**
- * Storage & Metadata Management
- * DashkaRecord v2.0.0-alpha - Phase 3
+ * Storage & File I/O Operations
+ * TASK18 - Storage Layer Unification
+ * DashkaRecord v2.0.0-alpha
+ * 
+ * This module handles ONLY file system operations.
+ * Metadata is stored in PostgreSQL via lib/recordings.ts
  */
 
 import { promises as fs } from 'fs';
 import path from 'path';
-import { ProcessingStatus, RecordingMetadata, Screenshot } from '@/types/recorder';
 
 // Directories
 const UPLOAD_BASE = path.join(process.cwd(), 'uploads');
-const VIDEO_DIR = path.join(UPLOAD_BASE, 'video');
-const MP4_DIR = path.join(UPLOAD_BASE, 'mp4');
-const TRANSCRIPT_DIR = path.join(UPLOAD_BASE, 'transcripts');
-const PDF_DIR = path.join(UPLOAD_BASE, 'pdf');
-const METADATA_DIR = path.join(UPLOAD_BASE, 'metadata');
-const SYNC_LOGS_DIR = path.join(UPLOAD_BASE, 'sync_logs');
-const FRAMES_DIR = path.join(UPLOAD_BASE, 'frames');
+export const VIDEO_DIR = path.join(UPLOAD_BASE, 'video');
+export const MP4_DIR = path.join(UPLOAD_BASE, 'mp4');
+export const TRANSCRIPT_DIR = path.join(UPLOAD_BASE, 'transcripts');
+export const SYNC_LOGS_DIR = path.join(UPLOAD_BASE, 'sync_logs');
+export const FRAMES_DIR = path.join(UPLOAD_BASE, 'frames');
 
 /**
  * Ensure all upload directories exist
@@ -25,8 +26,6 @@ export async function ensureDirs(): Promise<void> {
     VIDEO_DIR,
     MP4_DIR,
     TRANSCRIPT_DIR,
-    PDF_DIR,
-    METADATA_DIR,
     SYNC_LOGS_DIR,
     FRAMES_DIR,
   ];
@@ -38,6 +37,7 @@ export async function ensureDirs(): Promise<void> {
 
 /**
  * Create unique recording ID
+ * Format: YYYYMMDD_HHMMSS (e.g., 20260107_183045)
  */
 export function createRecordingId(): string {
   const now = new Date();
@@ -49,6 +49,10 @@ export function createRecordingId(): string {
 
 /**
  * Save WebM file to storage
+ * 
+ * @param id - Recording ID
+ * @param fileBuffer - File buffer
+ * @returns File path
  */
 export async function saveWebm(
   id: string,
@@ -67,154 +71,19 @@ export async function saveWebm(
 }
 
 /**
- * Create initial metadata for new recording
- */
-export async function createMetadata(
-  id: string,
-  filename: string,
-  videoPath: string,
-  fileSizeBytes: number
-): Promise<RecordingMetadata> {
-  await ensureDirs();
-
-  const metadata: RecordingMetadata = {
-    id,
-    filename,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    videoPath,
-    fileSizeBytes,
-    status: 'uploaded',
-    progress: {
-      step: 'uploaded',
-      stepNumber: 1,
-      totalSteps: 4,
-      message: 'Video uploaded successfully'
-    },
-    translated: false,
-    synced: false,
-    screenshots: [],
-  };
-
-  await writeMetadata(id, metadata);
-
-  console.log(`✅ Created metadata: ${id}`);
-
-  return metadata;
-}
-
-/**
- * Read metadata from JSON file
- */
-export async function readMetadata(id: string): Promise<RecordingMetadata | null> {
-  try {
-    const metadataPath = path.join(METADATA_DIR, `${id}.json`);
-    const content = await fs.readFile(metadataPath, 'utf-8');
-    return JSON.parse(content);
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-      return null;
-    }
-    throw error;
-  }
-}
-
-/**
- * Write metadata to JSON file
- */
-export async function writeMetadata(
-  id: string,
-  metadata: RecordingMetadata
-): Promise<void> {
-  await ensureDirs();
-
-  metadata.updatedAt = new Date().toISOString();
-
-  const metadataPath = path.join(METADATA_DIR, `${id}.json`);
-  await fs.writeFile(
-    metadataPath,
-    JSON.stringify(metadata, null, 2),
-    'utf-8'
-  );
-}
-
-/**
- * Update metadata fields
- */
-export async function updateMetadata(
-  id: string,
-  updates: Partial<RecordingMetadata>
-): Promise<RecordingMetadata | null> {
-  const metadata = await readMetadata(id);
-  if (!metadata) {
-    return null;
-  }
-
-  const updated = { ...metadata, ...updates };
-  await writeMetadata(id, updated);
-
-  return updated;
-}
-
-
-
-/**
- * Delete recording and all associated files
- */
-export async function deleteRecording(id: string): Promise<boolean> {
-  try {
-    const metadata = await readMetadata(id);
-    if (!metadata) {
-      return false;
-    }
-
-    // Delete all associated files
-    const filesToDelete = [
-      metadata.videoPath,
-      metadata.transcriptPath,
-      metadata.mp4Path,
-      metadata.translationPath,
-      path.join(METADATA_DIR, `${id}.json`),
-      path.join(SYNC_LOGS_DIR, `${id}_sync.json`),
-    ].filter(Boolean) as string[];
-
-    for (const filepath of filesToDelete) {
-      try {
-        await fs.unlink(filepath);
-        console.log(`  ✓ Deleted: ${filepath}`);
-      } catch (error) {
-        // File might not exist, continue
-        console.warn(`  ⚠ Could not delete: ${filepath}`);
-      }
-    }
-
-    // Delete screenshots directory
-    const framesDir = path.join(FRAMES_DIR, id);
-    try {
-      await fs.rm(framesDir, { recursive: true, force: true });
-      console.log(`  ✓ Deleted frames: ${framesDir}`);
-    } catch {
-      // Directory might not exist
-    }
-
-    console.log(`✅ Recording ${id} deleted successfully`);
-
-    return true;
-  } catch (error) {
-    console.error(`❌ Error deleting recording ${id}:`, error);
-    return false;
-  }
-}
-
-/**
- * Save screenshot for recording
+ * Save screenshot file
+ * Note: Metadata is NOT stored, only the file is saved
+ * 
+ * @param recordingId - Recording ID
+ * @param filename - Screenshot filename
+ * @param fileBuffer - File buffer
+ * @returns File path
  */
 export async function saveScreenshot(
   recordingId: string,
   filename: string,
-  fileBuffer: Buffer,
-  timestamp: number
-): Promise<Screenshot> {
+  fileBuffer: Buffer
+): Promise<string> {
   await ensureDirs();
 
   const recordingFramesDir = path.join(FRAMES_DIR, recordingId);
@@ -223,28 +92,16 @@ export async function saveScreenshot(
   const filepath = path.join(recordingFramesDir, filename);
   await fs.writeFile(filepath, fileBuffer);
 
-  const screenshot: Screenshot = {
-    filename,
-    timestamp,
-    path: filepath,
-    capturedAt: new Date().toISOString(),
-    sizeBytes: fileBuffer.length,
-  };
-
-  // Update metadata
-  const metadata = await readMetadata(recordingId);
-  if (metadata) {
-    metadata.screenshots.push(screenshot);
-    await writeMetadata(recordingId, metadata);
-  }
-
   console.log(`✅ Screenshot saved: ${filepath} (${fileBuffer.length} bytes)`);
 
-  return screenshot;
+  return filepath;
 }
 
 /**
  * Get file stats
+ * 
+ * @param filepath - Path to file
+ * @returns File stats or default values if not found
  */
 export async function getFileStats(filepath: string) {
   try {
@@ -267,6 +124,9 @@ export async function getFileStats(filepath: string) {
 
 /**
  * Get paths for recording files
+ * 
+ * @param id - Recording ID
+ * @returns Object with file paths
  */
 export function getRecordingPaths(id: string) {
   return {
@@ -274,51 +134,96 @@ export function getRecordingPaths(id: string) {
     mp4: path.join(MP4_DIR, `${id}.mp4`),
     transcript: path.join(TRANSCRIPT_DIR, `${id}.txt`),
     transcriptSegments: path.join(TRANSCRIPT_DIR, `${id}_segments.txt`),
-    pdf: path.join(PDF_DIR, `${id}.pdf`),
-    metadata: path.join(METADATA_DIR, `${id}.json`),
     framesDir: path.join(FRAMES_DIR, id),
+    syncLog: path.join(SYNC_LOGS_DIR, `${id}_sync.json`),
   };
 }
 
 /**
- * Update processing status
+ * Delete a single file
+ * 
+ * @param filepath - Path to file
+ * @returns True if deleted, false if not found
  */
-export async function updateProcessingStatus(
-  id: string,
-  status: ProcessingStatus,
-  step: string,
-  stepNumber: number,
-  message?: string
-): Promise<void> {
-  await updateMetadata(id, {
-    status,
-    progress: {
-      step,
-      stepNumber,
-      totalSteps: 4,
-      message,
-    },
-  });
-
-  console.log(`📊 ${id}: ${status} - ${step} (${stepNumber}/4)`);
+export async function deleteFile(filepath: string): Promise<boolean> {
+  try {
+    await fs.unlink(filepath);
+    console.log(`  ✓ Deleted: ${filepath}`);
+    return true;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      console.log(`  ⚠ File not found: ${filepath}`);
+      return false;
+    }
+    console.error(`  ❌ Error deleting file: ${filepath}`, error);
+    throw error;
+  }
 }
 
 /**
- * Record processing error
+ * Delete directory recursively
+ * 
+ * @param dirpath - Path to directory
+ * @returns True if deleted, false if not found
  */
-export async function recordProcessingError(
-  id: string,
-  step: string,
-  errorMessage: string
-): Promise<void> {
-  await updateMetadata(id, {
-    status: 'error',
-    error: {
-      step,
-      message: errorMessage,
-      timestamp: new Date().toISOString(),
-    },
-  });
+export async function deleteDirectory(dirpath: string): Promise<boolean> {
+  try {
+    await fs.rm(dirpath, { recursive: true, force: true });
+    console.log(`  ✓ Deleted directory: ${dirpath}`);
+    return true;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      console.log(`  ⚠ Directory not found: ${dirpath}`);
+      return false;
+    }
+    console.error(`  ❌ Error deleting directory: ${dirpath}`, error);
+    throw error;
+  }
+}
 
-  console.error(`❌ ${id}: Error at ${step} - ${errorMessage}`);
+/**
+ * Delete all files associated with a recording
+ * Note: This does NOT touch the database!
+ * Use deleteRecordingWithFiles() from lib/recordings.ts for complete deletion
+ * 
+ * @param id - Recording ID
+ * @param filePaths - Object containing paths to delete
+ */
+export async function deleteRecordingFiles(
+  id: string,
+  filePaths: {
+    webmPath?: string | null;
+    mp4Path?: string | null;
+    transcriptPath?: string | null;
+    subtitlesPath?: string | null;
+  }
+): Promise<void> {
+  console.log(`🗑️ Deleting files for recording: ${id}`);
+
+  const paths = getRecordingPaths(id);
+
+  // Delete video files
+  if (filePaths.webmPath) {
+    await deleteFile(filePaths.webmPath);
+  }
+  if (filePaths.mp4Path) {
+    await deleteFile(filePaths.mp4Path);
+  }
+  if (filePaths.transcriptPath) {
+    await deleteFile(filePaths.transcriptPath);
+  }
+  if (filePaths.subtitlesPath) {
+    await deleteFile(filePaths.subtitlesPath);
+  }
+
+  // Delete transcripts segments if exists
+  await deleteFile(paths.transcriptSegments);
+
+  // Delete sync log if exists
+  await deleteFile(paths.syncLog);
+
+  // Delete screenshots directory
+  await deleteDirectory(paths.framesDir);
+
+  console.log(`✅ Files deleted for recording: ${id}`);
 }

@@ -26,21 +26,20 @@ export async function POST(req: NextRequest) {
     const timestampMs = Date.now();
     const filename = `screenshot_${timestamp}_${timestampMs}.png`;
 
-    // Save screenshot
-    const screenshot = await saveScreenshot(
+    // Save screenshot (only 3 parameters)
+    const screenshotPath = await saveScreenshot(
       recordingId,
       filename,
-      buffer,
-      timestamp
+      buffer
     );
 
     return NextResponse.json({
       status: 'success',
       message: 'Screenshot saved successfully',
       recording_id: recordingId,
-      filename: screenshot.filename,
+      filename: filename,
       timestamp,
-      url: `/api/static/frames/${recordingId}/${screenshot.filename}`,
+      url: `/api/static/frames/${recordingId}/${filename}`,
     });
   } catch (error) {
     console.error('❌ Screenshot upload error:', error);

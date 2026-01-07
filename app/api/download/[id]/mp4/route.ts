@@ -1,6 +1,12 @@
+/**
+ * MP4 Download API Route
+ * TASK18 - Storage Layer Unification
+ * DashkaRecord v2.0.0-alpha
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
 import { readFile, access } from 'fs/promises';
-import { readMetadata } from '@/lib/storage';
+import { getRecording, updateRecording } from '@/lib/recordings';
 import { webmToMp4 } from '@/lib/convert';
 
 export async function GET(
@@ -9,54 +15,52 @@ export async function GET(
 ) {
   const { id } = await params;
 
-
   try {
-    const metadata = await readMetadata(id);
+    const recording = await getRecording(id);
     
-    if (!metadata) {
+    if (!recording) {
       return NextResponse.json(
         { error: 'Recording not found' },
         { status: 404 }
       );
     }
 
-    let mp4Path: string | null = metadata.mp4Path ?? null;
+    let mp4Path: string | null = recording.mp4Path ?? null;
 
-    // If MP4 doesn't exist, convert on-demand
     if (!mp4Path) {
       console.log(`🔄 On-demand MP4 conversion for: ${id}`);
       mp4Path = await webmToMp4(id);
       
       if (!mp4Path) {
         return NextResponse.json(
-          { error: 'MP4 conversion failed. Check if WebM exists and FFmpeg is installed.' },
+          { error: 'MP4 conversion failed' },
           { status: 500 }
         );
       }
+
+      await updateRecording(id, { mp4Path });
+      console.log(`✅ Updated MP4 path in DB: ${id}`);
     } else {
-      // Check if file exists
       try {
         await access(mp4Path);
       } catch {
-        // File missing, try conversion
         console.log(`⚠️ MP4 file missing, reconverting: ${id}`);
         mp4Path = await webmToMp4(id);
         
         if (!mp4Path) {
           return NextResponse.json(
-            { error: 'MP4 file not found and conversion failed' },
+            { error: 'MP4 conversion failed' },
             { status: 404 }
           );
         }
+
+        await updateRecording(id, { mp4Path });
       }
     }
 
-    // Read MP4 file
     const fileBuffer = await readFile(mp4Path);
-
     console.log(`📥 Downloading MP4: ${id} (${fileBuffer.length} bytes)`);
 
-    // Return file with proper headers
     return new NextResponse(fileBuffer, {
       headers: {
         'Content-Type': 'video/mp4',

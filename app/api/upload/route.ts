@@ -12,7 +12,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { promises as fs } from 'fs';
 import path from 'path';
 import { createRecording } from '@/lib/recordings';
-import { createRecordingId } from '@/lib/storage';
 
 const UPLOAD_DIR = path.join(process.cwd(), 'uploads/video');
 
@@ -47,8 +46,8 @@ export async function POST(req: NextRequest) {
     console.log(`📁 File received: ${file.name} (${file.size} bytes)`);
 
     // Generate recording ID (INSIDE function!)
-    const recordingId = createRecordingId();
-    const filename = `${recordingId}.webm`;
+    
+    const filename = `${Date.now()}.webm`;
     const filePath = path.join(UPLOAD_DIR, filename);
 
     // Save file to disk
@@ -59,7 +58,6 @@ export async function POST(req: NextRequest) {
     // Save metadata to PostgreSQL
     try {
       const recording = await createRecording({
-        id: recordingId,
         filename,
         webmPath: filePath,
         fileSizeBytes: BigInt(file.size),

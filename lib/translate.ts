@@ -1,163 +1,124 @@
 /**
- * Translation Service using DeepSeek API
- * DashkaRecord v2.0.0-alpha - Phase 3
+ * Translation Module
+ * TASK18 - Storage Layer Unification
+ * DashkaRecord v2.0.0-alpha
  */
 
+import { 
+  getRecording, 
+  markRecordingTranslated, 
+  markRecordingError 
+} from './recordings';
+import { getRecordingPaths } from './storage';
 import { promises as fs } from 'fs';
-import { TranslateRequest, TranslateResult } from '@/types/api';
-import { getRecordingPaths, readMetadata, updateMetadata } from '@/lib/storage';
 
-const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY || '';
-const DEEPSEEK_API_URL = 'https://api.deepseek.com/v1/chat/completions';
-
-/**
- * Translate transcript using DeepSeek API
- */
-export async function translateTranscript(
-  request: TranslateRequest
-): Promise<TranslateResult> {
-  console.log(`🌐 Translating ${request.recordingId} to ${request.targetLanguage}`);
-
-  const metadata = await readMetadata(request.recordingId);
-  if (!metadata || !metadata.transcriptPath) {
-    throw new Error('Transcript not found');
-  }
-
-  // Read transcript
-  const transcriptContent = await fs.readFile(metadata.transcriptPath, 'utf-8');
-
-  // Parse metadata lines
-  const lines = transcriptContent.split('\n');
-  let transcriptText = transcriptContent;
-  let sourceLanguage = metadata.language || 'auto';
-
-  if (lines[0].startsWith('[Language:')) {
-    sourceLanguage = lines[0].replace('[Language:', '').replace(']', '').trim();
-    transcriptText = lines.slice(3).join('\n');
-  }
-
-  // Translate using DeepSeek
-  const translatedText = await translateWithDeepSeek(
-    transcriptText,
-    sourceLanguage,
-    request.targetLanguage
-  );
-
-  // Save translation
-  const paths = getRecordingPaths(request.recordingId);
-  const translationPath = paths.transcript.replace('.txt', `_${request.targetLanguage}.txt`);
-
-  await fs.writeFile(
-    translationPath,
-    `[Original Language: ${sourceLanguage}]\n[Translated to: ${request.targetLanguage}]\n\n${translatedText}`,
-    'utf-8'
-  );
-
-  // Update metadata
-  await updateMetadata(request.recordingId, {
-    translated: true,
-    translationLanguage: request.targetLanguage,
-    translationPath,
-  });
-
-  console.log(`✅ Translation complete: ${translationPath}`);
-
-  return {
-    translatedText,
-    translationPath,
-  };
-}
-
-/**
- * Translate text using DeepSeek API
- */
-async function translateWithDeepSeek(
-  text: string,
-  sourceLanguage: string,
-  targetLanguage: string
-): Promise<string> {
-  if (!DEEPSEEK_API_KEY) {
-    throw new Error('DEEPSEEK_API_KEY not configured in environment');
-  }
-
-  const languageNames: Record<string, string> = {
-    en: 'English',
-    ru: 'Russian',
-    lt: 'Lithuanian',
-    de: 'German',
-    fr: 'French',
-    es: 'Spanish',
-    uk: 'Ukrainian',
-    pl: 'Polish',
-    it: 'Italian',
-  };
-
-  const sourceName = languageNames[sourceLanguage] || sourceLanguage;
-  const targetName = languageNames[targetLanguage] || targetLanguage;
-
-  const prompt = sourceLanguage === 'auto'
-    ? `Translate the following text to ${targetName}. Preserve formatting and structure:\n\n${text}`
-    : `Translate from ${sourceName} to ${targetName}. Preserve formatting and structure:\n\n${text}`;
+export async function translateRecording(
+  id: string,
+  targetLanguage: string = 'en'
+): Promise<{
+  success: boolean;
+  message: string;
+  subtitlesPath?: string;
+}> {
+  console.log(`🌐 Starting translation for: ${id} (target: ${targetLanguage})`);
 
   try {
-    const response = await fetch(DEEPSEEK_API_URL, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${DEEPSEEK_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'deepseek-chat',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a professional translator. Translate accurately while preserving the original tone and structure.',
-          },
-          {
-            role: 'user',
-            content: prompt,
-          },
-        ],
-        temperature: 0.3,
-        max_tokens: 4000,
-      }),
-    });
+    const recording = await getRecording(id);
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`DeepSeek API error: ${response.status} ${errorText}`);
+    if (!recording) {
+      console.error(`❌ Recording not found: ${id}`);
+      return {
+        success: false,
+        message: 'Recording not found in database',
+      };
     }
 
-    const result = await response.json();
-    const translatedText = result.choices[0].message.content.trim();
+    if (recording.translated) {
+      console.log(`ℹ️ Recording already translated: ${id}`);
+      return {
+        success: true,
+        message: 'Recording already translated',
+        subtitlesPath: recording.subtitlesPath || undefined,
+      };
+    }
 
-    return translatedText;
+    if (!recording.transcriptPath) {
+      await markRecordingError(id, 'translate', 'Transcript required');
+      return {
+        success: false,
+        message: 'Transcript not available',
+      };
+    }
+
+    const transcriptContent = await fs.readFile(recording.transcriptPath, 'utf-8');
+
+    if (!transcriptContent || transcriptContent.trim().length === 0) {
+      await markRecordingError(id, 'translate', 'Empty transcript');
+      return {
+        success: false,
+        message: 'Transcript is empty',
+      };
+    }
+
+    console.log(`📖 Read transcript: ${transcriptContent.length} characters`);
+    console.log(`🔄 Translating to ${targetLanguage}...`);
+
+    const translatedText = `[Translated to ${targetLanguage}]\n${transcriptContent}`;
+
+    const paths = getRecordingPaths(id);
+    const subtitlesPath = paths.transcript.replace('.txt', `_${targetLanguage}.srt`);
+    
+    const srtContent = generateSRT(translatedText);
+    await fs.writeFile(subtitlesPath, srtContent, 'utf-8');
+
+    console.log(`✅ Subtitles saved: ${subtitlesPath}`);
+
+    await markRecordingTranslated(id, subtitlesPath);
+    console.log(`✅ Translation completed: ${id}`);
+
+    return {
+      success: true,
+      message: 'Translation completed successfully',
+      subtitlesPath,
+    };
   } catch (error) {
-    console.error('❌ Translation error:', error);
-    throw error;
+    console.error(`❌ Translation error for ${id}:`, error);
+
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    await markRecordingError(id, 'translate', errorMessage);
+
+    return {
+      success: false,
+      message: `Translation failed: ${errorMessage}`,
+    };
   }
 }
 
-/**
- * Get available translation languages
- */
-export function getAvailableLanguages(): Record<string, string> {
-  return {
-    en: 'English',
-    ru: 'Russian',
-    lt: 'Lithuanian',
-    de: 'German',
-    fr: 'French',
-    es: 'Spanish',
-    uk: 'Ukrainian',
-    pl: 'Polish',
-    it: 'Italian',
-  };
+function generateSRT(text: string): string {
+  const lines = text.split('\n').filter(line => line.trim());
+  let srt = '';
+  
+  lines.forEach((line, index) => {
+    const startTime = formatSRTTime(index * 3);
+    const endTime = formatSRTTime((index + 1) * 3);
+    
+    srt += `${index + 1}\n`;
+    srt += `${startTime} --> ${endTime}\n`;
+    srt += `${line}\n\n`;
+  });
+  
+  return srt;
 }
 
-/**
- * Check if DeepSeek API is configured
- */
-export function isTranslationAvailable(): boolean {
-  return !!DEEPSEEK_API_KEY;
+function formatSRTTime(seconds: number): string {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const secs = Math.floor(seconds % 60);
+  const ms = Math.floor((seconds % 1) * 1000);
+  
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')},${String(ms).padStart(3, '0')}`;
+}
+
+export function getAvailableLanguages(): string[] {
+  return ['en', 'de', 'fr', 'es', 'it', 'pt', 'ru', 'zh', 'ja', 'ko'];
 }

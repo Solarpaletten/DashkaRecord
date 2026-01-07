@@ -1,20 +1,21 @@
 /**
  * Recordings Database Module
- * TASK15 - Database Integration
+ * TASK18 - Storage Layer Unification
  * DashkaRecord v2.0.0-alpha
  * 
  * CRUD operations for recordings using Prisma
- * Replaces file-based metadata storage
+ * Single source of truth for metadata
  */
 
 import { prisma } from './db';
 import { Recording, Prisma } from '@prisma/client';
+import { deleteRecordingFiles } from './storage';
 
 /**
  * Create Recording Input (matches old RecordingMetadata interface)
  */
 export interface CreateRecordingInput {
-  id: string;
+  id?: string;
   filename: string;
   webmPath: string;
   mp4Path?: string;
@@ -44,7 +45,6 @@ export async function createRecording(data: CreateRecordingInput): Promise<Recor
   try {
     const recording = await prisma.recording.create({
       data: {
-        id: data.id,
         filename: data.filename,
         webmPath: data.webmPath,
         mp4Path: data.mp4Path,
@@ -152,9 +152,9 @@ export async function updateRecording(
 }
 
 /**
- * Delete a recording from database
+ * Delete a recording from database ONLY
  * Note: This does NOT delete files from disk!
- * Call deleteRecordingFiles() separately if needed.
+ * Use deleteRecordingWithFiles() for complete deletion.
  * 
  * @param id - Recording ID
  * @returns Deleted recording
@@ -172,6 +172,43 @@ export async function deleteRecording(id: string): Promise<Recording> {
   } catch (error) {
     console.error(`❌ Failed to delete recording:`, error);
     throw new Error(`Failed to delete recording: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}
+
+/**
+ * Delete recording from database AND all associated files
+ * This is the complete deletion operation.
+ * 
+ * @param id - Recording ID
+ * @returns True if successful
+ */
+export async function deleteRecordingWithFiles(id: string): Promise<boolean> {
+  console.log(`🗑️ Deleting recording with files: ${id}`);
+
+  try {
+    // 1. Get recording from DB
+    const recording = await getRecording(id);
+    if (!recording) {
+      console.log(`⚠️ Recording not found: ${id}`);
+      return false;
+    }
+
+    // 2. Delete files from disk
+    await deleteRecordingFiles(id, {
+      webmPath: recording.webmPath,
+      mp4Path: recording.mp4Path,
+      transcriptPath: recording.transcriptPath,
+      subtitlesPath: recording.subtitlesPath,
+    });
+
+    // 3. Delete from database
+    await deleteRecording(id);
+
+    console.log(`✅ Recording and files deleted: ${id}`);
+    return true;
+  } catch (error) {
+    console.error(`❌ Failed to delete recording with files:`, error);
+    throw error;
   }
 }
 

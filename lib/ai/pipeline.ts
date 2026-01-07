@@ -7,7 +7,12 @@
 
 import { promises as fs } from 'fs';
 import path from 'path';
-import { readMetadata, updateMetadata } from '@/lib/storage';
+import {
+  getRecording,
+  updateRecording,
+  markRecordingError,
+  markRecordingTranslated,
+} from '@/lib/recordings';
 import { transcribeAudio, STTResult } from './stt';
 import { translateSegments, TranslationResult } from './translate';
 import { generateSubtitles } from './subtitles';
@@ -58,12 +63,12 @@ export async function runTranslationPipeline(
 
   try {
     // Get recording metadata
-    const metadata = await readMetadata(config.recordingId);
-    if (!metadata) {
+    const recording = await getRecording(config.recordingId);
+    if (!recording) {
       throw new Error('Recording not found');
     }
 
-    const videoPath = metadata.videoPath;
+    const videoPath = recording.webmPath;
 
     // STEP 1: Speech-to-Text (STT)
     console.log('\n📊 Step 1/4: Speech-to-Text...');
@@ -126,10 +131,19 @@ export async function runTranslationPipeline(
     );
 
     // Update metadata with translation info
-    await updateMetadata(config.recordingId, {
-      translated: true,
-      translationLanguage: config.targetLang,
-    });
+    try {
+      await markRecordingTranslated(
+        config.recordingId,
+        srtPath || undefined
+      );
+    } catch (error) {
+      await markRecordingError(
+        config.recordingId,
+        'pipeline',
+        (error as Error).message
+      );
+      throw error;
+    }
 
     const result: PipelineResult = {
       recordingId: config.recordingId,
