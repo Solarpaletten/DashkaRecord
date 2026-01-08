@@ -1,26 +1,16 @@
-/**
- * Storage & File I/O Operations
- * TASK18 - Storage Layer Unification
- * DashkaRecord v2.0.0-alpha
- * 
- * This module handles ONLY file system operations.
- * Metadata is stored in PostgreSQL via lib/recordings.ts
- */
 
 import { promises as fs } from 'fs';
 import path from 'path';
 
 // Directories
-const UPLOAD_BASE = path.join(process.cwd(), 'uploads');
+const UPLOAD_BASE = process.env.UPLOADS_PATH || path.join(process.cwd(), 'uploads');
+
 export const VIDEO_DIR = path.join(UPLOAD_BASE, 'video');
 export const MP4_DIR = path.join(UPLOAD_BASE, 'mp4');
 export const TRANSCRIPT_DIR = path.join(UPLOAD_BASE, 'transcripts');
 export const SYNC_LOGS_DIR = path.join(UPLOAD_BASE, 'sync_logs');
 export const FRAMES_DIR = path.join(UPLOAD_BASE, 'frames');
 
-/**
- * Ensure all upload directories exist
- */
 export async function ensureDirs(): Promise<void> {
   const dirs = [
     VIDEO_DIR,
@@ -35,10 +25,6 @@ export async function ensureDirs(): Promise<void> {
   }
 }
 
-/**
- * Create unique recording ID
- * Format: YYYYMMDD_HHMMSS (e.g., 20260107_183045)
- */
 export function createRecordingId(): string {
   const now = new Date();
   return now.toISOString()
@@ -47,13 +33,6 @@ export function createRecordingId(): string {
     .split('.')[0];
 }
 
-/**
- * Save WebM file to storage
- * 
- * @param id - Recording ID
- * @param fileBuffer - File buffer
- * @returns File path
- */
 export async function saveWebm(
   id: string,
   fileBuffer: Buffer
@@ -70,15 +49,6 @@ export async function saveWebm(
   return filepath;
 }
 
-/**
- * Save screenshot file
- * Note: Metadata is NOT stored, only the file is saved
- * 
- * @param recordingId - Recording ID
- * @param filename - Screenshot filename
- * @param fileBuffer - File buffer
- * @returns File path
- */
 export async function saveScreenshot(
   recordingId: string,
   filename: string,
@@ -97,12 +67,6 @@ export async function saveScreenshot(
   return filepath;
 }
 
-/**
- * Get file stats
- * 
- * @param filepath - Path to file
- * @returns File stats or default values if not found
- */
 export async function getFileStats(filepath: string) {
   try {
     const stats = await fs.stat(filepath);
@@ -122,12 +86,6 @@ export async function getFileStats(filepath: string) {
   }
 }
 
-/**
- * Get paths for recording files
- * 
- * @param id - Recording ID
- * @returns Object with file paths
- */
 export function getRecordingPaths(id: string) {
   return {
     video: path.join(VIDEO_DIR, `${id}.webm`),
@@ -139,12 +97,6 @@ export function getRecordingPaths(id: string) {
   };
 }
 
-/**
- * Delete a single file
- * 
- * @param filepath - Path to file
- * @returns True if deleted, false if not found
- */
 export async function deleteFile(filepath: string): Promise<boolean> {
   try {
     await fs.unlink(filepath);
@@ -160,12 +112,6 @@ export async function deleteFile(filepath: string): Promise<boolean> {
   }
 }
 
-/**
- * Delete directory recursively
- * 
- * @param dirpath - Path to directory
- * @returns True if deleted, false if not found
- */
 export async function deleteDirectory(dirpath: string): Promise<boolean> {
   try {
     await fs.rm(dirpath, { recursive: true, force: true });
@@ -181,14 +127,6 @@ export async function deleteDirectory(dirpath: string): Promise<boolean> {
   }
 }
 
-/**
- * Delete all files associated with a recording
- * Note: This does NOT touch the database!
- * Use deleteRecordingWithFiles() from lib/recordings.ts for complete deletion
- * 
- * @param id - Recording ID
- * @param filePaths - Object containing paths to delete
- */
 export async function deleteRecordingFiles(
   id: string,
   filePaths: {
