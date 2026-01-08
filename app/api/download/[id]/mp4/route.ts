@@ -1,79 +1,53 @@
-/**
- * MP4 Download API Route
- * TASK18 - Storage Layer Unification
- * DashkaRecord v2.0.0-alpha
- */
-
 import { NextRequest, NextResponse } from 'next/server';
-import { readFile, access } from 'fs/promises';
-import { getRecording, updateRecording } from '@/lib/recordings';
-import { webmToMp4 } from '@/lib/convert';
+import fs from 'fs';
+import path from 'path';
+import ffmpeg from 'fluent-ffmpeg';
+
+import { getRecordingPaths } from '@/lib/storage';
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
-  const { id } = await params;
+  const { id } = params;
+  const { video, mp4 } = getRecordingPaths(id);
 
   try {
-    const recording = await getRecording(id);
-    
-    if (!recording) {
+    // 1️⃣ Проверяем WebM
+    if (!fs.existsSync(video)) {
       return NextResponse.json(
-        { error: 'Recording not found' },
+        { error: 'WebM not found', path: video },
         { status: 404 }
       );
     }
 
-    let mp4Path: string | null = recording.mp4Path ?? null;
-
-    if (!mp4Path) {
-      console.log (`🔄 On-demand MP4 conversion for: ${id}`);
-      mp4Path = await webmToMp4(id);
-      
-      if (!mp4Path) {
-        return NextResponse.json(
-          { error: 'MP4 conversion failed' },
-          { status: 500 }
-        );
-      }
-
-      await updateRecording(id, { mp4Path });
-      console.log (`✅ Updated MP4 path in DB: ${id}`);
-    } else {
-      try {
-        await access(mp4Path);
-      } catch {
-        console.log (`⚠️ MP4 file missing, reconverting: ${id}`);
-        mp4Path = await webmToMp4(id);
-        
-        if (!mp4Path) {
-          return NextResponse.json(
-            { error: 'MP4 conversion failed' },
-            { status: 404 }
-          );
-        }
-
-        await updateRecording(id, { mp4Path });
-      }
+    // 2️⃣ Если MP4 нет — создаём
+    if (!fs.existsSync(mp4)) {
+      await new Promise<void>((resolve, reject) => {
+        ffmpeg(video)
+          .outputOptions('-movflags faststart')
+          .toFormat('mp4')
+          .save(mp4)
+          .on('end', () => resolve())
+          .on('error', (err) => reject(err));
+      });
     }
 
-    const fileBuffer = await readFile(mp4Path);
-    console.log(`📥 Downloading MP4: ${id} (${fileBuffer.length} bytes)`);
+    // 3️⃣ Отдаём MP4
+    const stream = fs.createReadStream(mp4);
 
-    return new NextResponse(fileBuffer, {
+    return new NextResponse(stream as any, {
       headers: {
         'Content-Type': 'video/mp4',
-        'Content-Disposition': `attachment; filename="recording_${id}.mp4"`,
-        'Content-Length': fileBuffer.length.toString(),
+        'Content-Disposition': `attachment; filename="${id}.mp4"`,
       },
     });
-  } catch (error) {
-    console.error(`❌ MP4 download error for ${id}:`, error);
+  } catch (error: any) {
+    console.error('❌ MP4 download error:', error);
     return NextResponse.json(
       {
         error: 'Failed to download MP4 file',
-        details: (error as Error).message,
+        details: error?.message,
       },
       { status: 500 }
     );
