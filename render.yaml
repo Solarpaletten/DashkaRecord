@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: dashkarecord
+    env: node
+    region: frankfurt
+    plan: starter
+
+    buildCommand: pnpm install && pnpm prisma generate && pnpm build
+    startCommand: pnpm start
+
+    disk:
+      name: dashka-uploads
+      mountPath: /opt/render/project/src/uploads
+      sizeGB: 10
