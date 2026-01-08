@@ -28,7 +28,7 @@ export async function GET(
     let mp4Path: string | null = recording.mp4Path ?? null;
 
     if (!mp4Path) {
-      console.log(`🔄 On-demand MP4 conversion for: ${id}`);
+      console.log (`🔄 On-demand MP4 conversion for: ${id}`);
       mp4Path = await webmToMp4(id);
       
       if (!mp4Path) {
@@ -39,12 +39,12 @@ export async function GET(
       }
 
       await updateRecording(id, { mp4Path });
-      console.log(`✅ Updated MP4 path in DB: ${id}`);
+      console.log (`✅ Updated MP4 path in DB: ${id}`);
     } else {
       try {
         await access(mp4Path);
       } catch {
-        console.log(`⚠️ MP4 file missing, reconverting: ${id}`);
+        console.log (`⚠️ MP4 file missing, reconverting: ${id}`);
         mp4Path = await webmToMp4(id);
         
         if (!mp4Path) {

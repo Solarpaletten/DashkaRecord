@@ -1,97 +1,62 @@
-/**
- * Upload API Route - WITH PRISMA DATABASE
- * TASK15 - Database Integration
- * TASK17 - Fixed: removed unused saveVideoFile import
- * TASK17.1 - Unified: use storage.ts ID generator
- * DashkaRecord v2.0.0-alpha
- * 
- * Handles file uploads and saves metadata to PostgreSQL
- */
-
 import { NextRequest, NextResponse } from 'next/server';
 import { promises as fs } from 'fs';
 import path from 'path';
-import { createRecording } from '@/lib/recordings';
+import { createRecording, updateRecording } from '@/lib/recordings';
 
-const UPLOAD_DIR = path.join(process.cwd(), 'uploads/video');
+const STORAGE_DIR = process.env.STORAGE_DIR || 'recordings';
 
-/**
- * Ensure upload directory exists
- */
-async function ensureUploadDir(): Promise<void> {
-  await fs.mkdir(UPLOAD_DIR, { recursive: true });
+async function ensureDir(dir: string) {
+  await fs.mkdir(dir, { recursive: true });
 }
 
-/**
- * POST /api/upload
- * Upload a screen recording and save to database
- */
 export async function POST(req: NextRequest) {
   console.log('📤 Upload request received');
 
   try {
-    await ensureUploadDir();
-
     const formData = await req.formData();
-    const file = formData.get('file') as File;
+    const file = formData.get('file') as File | null;
 
     if (!file) {
-      console.error('❌ No file in request');
       return NextResponse.json(
         { error: 'No file provided' },
         { status: 400 }
       );
     }
 
-    console.log(`📁 File received: ${file.name} (${file.size} bytes)`);
+    // 1️⃣ Create DB record
+    const recording = await createRecording({
+      filename: 'source.webm',
+      webmPath: '',
+      fileSizeBytes: BigInt(file.size),
+      status: 'uploaded',
+    });
 
-    // Generate recording ID (INSIDE function!)
-    
-    const filename = `${Date.now()}.webm`;
-    const filePath = path.join(UPLOAD_DIR, filename);
+    const recordingId = recording.id;
+    const recordingDir = path.join(STORAGE_DIR, recordingId);
+    const webmPath = path.join(recordingDir, 'source.webm');
 
-    // Save file to disk
+    // 2️⃣ Create directory
+    await ensureDir(recordingDir);
+
+    // 3️⃣ Save WebM file
     const buffer = Buffer.from(await file.arrayBuffer());
-    await fs.writeFile(filePath, buffer);
-    console.log(`💾 File saved to disk: ${filePath}`);
+    await fs.writeFile(webmPath, buffer);
 
-    // Save metadata to PostgreSQL
-    try {
-      const recording = await createRecording({
-        filename,
-        webmPath: filePath,
-        fileSizeBytes: BigInt(file.size),
-        status: 'uploaded',
-      });
+    // 4️⃣ Update DB with real path
+    await updateRecording(recordingId, {
+      webmPath,
+    });
 
-      console.log(`✅ Recording created in database: ${recording.id}`);
+    console.log(`✅ Upload completed: ${recordingId}`);
 
-      return NextResponse.json({
-        success: true,
-        message: 'Recording uploaded! Processing in background.',
-        recordingId: recording.id,
-        filename: recording.filename,
-      });
-    } catch (dbError) {
-      // If database save fails, delete the file
-      console.error(`❌ Database error, cleaning up file:`, dbError);
-      try {
-        await fs.unlink(filePath);
-      } catch (cleanupError) {
-        console.error(`⚠️ Failed to cleanup file:`, cleanupError);
-      }
-
-      throw new Error(`Database save failed: ${dbError instanceof Error ? dbError.message : 'Unknown error'}`);
-    }
-
+    return NextResponse.json({
+      success: true,
+      recordingId,
+    });
   } catch (error) {
-    console.error('❌ Upload error:', error);
-
+    console.error('❌ Upload error', error);
     return NextResponse.json(
-      {
-        error: 'Upload failed',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      },
+      { error: 'Upload failed' },
       { status: 500 }
     );
   }
