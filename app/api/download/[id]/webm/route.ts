@@ -1,65 +1,50 @@
-/**
- * WebM Download API Route
- * TASK18 - Storage Layer Unification
- * DashkaRecord v2.0.0-alpha
- */
-
 import { NextRequest, NextResponse } from 'next/server';
-import { readFile, access } from 'fs/promises';
+import fs from 'fs';
 import { getRecording } from '@/lib/recordings';
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
-  const { id } = await params;
+  const { id } = params;
 
   try {
     const recording = await getRecording(id);
-    
+
     if (!recording) {
       return NextResponse.json(
-        { error: 'Recording not found' },
+        { error: 'Recording not found in database', id },
         { status: 404 }
       );
     }
 
     const webmPath = recording.webmPath;
 
-    if (!webmPath) {
+    if (!fs.existsSync(webmPath)) {
       return NextResponse.json(
-        { error: 'WebM file path not found in database' },
+        { error: 'WebM file not found', path: webmPath },
         { status: 404 }
       );
     }
 
-    try {
-      await access(webmPath);
-    } catch {
-      return NextResponse.json(
-        { error: 'WebM file not found on disk' },
-        { status: 404 }
-      );
-    }
+    const stat = fs.statSync(webmPath);
+    const stream = fs.createReadStream(webmPath);
 
-    const fileBuffer = await readFile(webmPath);
-    console.log(`📥 Downloading WebM: ${id} (${fileBuffer.length} bytes)`);
-
-    return new NextResponse(fileBuffer, {
+    return new NextResponse(stream as any, {
       headers: {
         'Content-Type': 'video/webm',
-        'Content-Disposition': `attachment; filename="recording_${id}.webm"`,
-        'Content-Length': fileBuffer.length.toString(),
+        'Content-Length': stat.size.toString(),
+        'Content-Disposition': `attachment; filename="${id}.webm"`,
       },
     });
-  } catch (error) {
-    console.error(`❌ WebM download error for ${id}:`, error);
+  } catch (error: any) {
+    console.error('❌ WebM download error:', error);
     return NextResponse.json(
       {
         error: 'Failed to download WebM file',
-        details: (error as Error).message,
+        details: error?.message,
       },
       { status: 500 }
     );
   }
-}
+} 
