@@ -3,7 +3,7 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { createRecording, updateRecording } from '@/lib/recordings';
 
-const STORAGE_DIR = process.env.STORAGE_DIR || 'recordings';
+const STORAGE_DIR = process.env.STORAGE_DIR || path.join(process.cwd(), 'recordings');
 
 async function ensureDir(dir: string) {
   await fs.mkdir(dir, { recursive: true });
