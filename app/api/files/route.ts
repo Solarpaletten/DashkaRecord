@@ -1,18 +1,8 @@
-/**
- * Files API Route - WITH PRISMA DATABASE
- * TASK15 - Database Integration
- * DashkaRecord v2.0.0-alpha
- * 
- * Lists recordings from PostgreSQL database
- */
+
 
 import { NextResponse } from 'next/server';
 import { listRecordings } from '@/lib/recordings';
 
-/**
- * GET /api/files
- * Get list of all recordings from database
- */
 export async function GET() {
   console.log('📋 Listing recordings from database');
 
@@ -21,7 +11,7 @@ export async function GET() {
       orderBy: { createdAt: 'desc' },
     });
 
-    console.log(`✅ Found ${recordings.length} recordings`);
+    console.log(`✅ Found ${recordings.length} recordings`); // ✅
 
     // Transform to match frontend interface
     const transformedRecordings = recordings.map((recording) => ({

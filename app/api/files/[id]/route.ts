@@ -1,25 +1,14 @@
-/**
- * Single File API Route - WITH PRISMA DATABASE
- * TASK15 - Database Integration
- * DashkaRecord v2.0.0-alpha
- * 
- * Get/Delete individual recordings from PostgreSQL
- */
-
 import { NextRequest, NextResponse } from 'next/server';
 import { promises as fs } from 'fs';
+import path from 'path';
 import { getRecording, deleteRecording } from '@/lib/recordings';
 
-/**
- * GET /api/files/[id]
- * Get a single recording by ID
- */
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   const { id } = await context.params;
-  
+
   console.log(`🔍 Getting recording: ${id}`);
 
   try {
@@ -32,7 +21,6 @@ export async function GET(
       );
     }
 
-    // Transform to match frontend interface
     const transformed = {
       id: recording.id,
       filename: recording.filename,
@@ -51,10 +39,8 @@ export async function GET(
     };
 
     return NextResponse.json(transformed);
-
   } catch (error) {
-    console.error(`❌ Error getting recording:`, error);
-
+    console.error('❌ Error getting recording:', error);
     return NextResponse.json(
       {
         error: 'Failed to get recording',
@@ -74,11 +60,10 @@ export async function DELETE(
   context: { params: Promise<{ id: string }> }
 ) {
   const { id } = await context.params;
-  
+
   console.log(`🗑️ Deleting recording: ${id}`);
 
   try {
-    // Get recording to find file paths
     const recording = await getRecording(id);
 
     if (!recording) {
@@ -88,7 +73,7 @@ export async function DELETE(
       );
     }
 
-    // Delete files from disk
+    // Delete individual files
     const filesToDelete = [
       recording.webmPath,
       recording.mp4Path,
@@ -104,7 +89,17 @@ export async function DELETE(
         console.log(`✅ Deleted file: ${filePath}`);
       } catch (error) {
         console.warn(`⚠️ Failed to delete file: ${filePath}`, error);
-        // Continue deleting other files even if one fails
+      }
+    }
+
+    // Delete the recording directory (recordings/{id}/)
+    if (recording.webmPath) {
+      const recordingDir = path.dirname(recording.webmPath);
+      try {
+        await fs.rm(recordingDir, { recursive: true, force: true });
+        console.log(`✅ Deleted directory: ${recordingDir}`);
+      } catch (error) {
+        console.warn(`⚠️ Failed to delete directory: ${recordingDir}`, error);
       }
     }
 
@@ -118,10 +113,8 @@ export async function DELETE(
       message: 'Recording deleted successfully',
       recordingId: id,
     });
-
   } catch (error) {
-    console.error(`❌ Error deleting recording:`, error);
-
+    console.error('❌ Error deleting recording:', error);
     return NextResponse.json(
       {
         error: 'Failed to delete recording',
